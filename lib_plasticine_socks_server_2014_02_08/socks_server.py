@@ -234,32 +234,6 @@ def remote_connection_socks_server(
         remote_addr_type, remote_addr, remote_port):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
-    is_allowed = True
-    
-    for feature in features:
-        before_remote_connection_hook = feature.get('before_remote_connection_hook')
-        if before_remote_connection_hook is not None:
-            before_remote_connection_hook_result = yield from before_remote_connection_hook(
-                    socks_server_environ, {
-                            'client_reader': client_reader,
-                            'client_writer': client_writer,
-                            'remote_addr_type': remote_addr_type,
-                            'remote_addr': remote_addr,
-                            'remote_port': remote_port,
-                            })
-            
-            if before_remote_connection_hook_result is not None:
-                assert isinstance(before_remote_connection_hook_result, bool)
-                
-                is_allowed = before_remote_connection_hook_result
-                
-                if is_allowed:
-                    # positive if at least one feature hook is positive
-                    
-                    break
-    
-    if not is_allowed:
-        return
     
     for feature in features:
         remote_connection_hook = feature.get('remote_connection_hook')
@@ -295,34 +269,6 @@ def remote_connection_socks_server(
         remote_writer.get_extra_info('socket').setsockopt(
                 socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     
-    for feature in features:
-        after_remote_connection_hook = feature.get('after_remote_connection_hook')
-        if after_remote_connection_hook is not None:
-            after_remote_connection_hook_result = yield from after_remote_connection_hook(
-                    socks_server_environ, {
-                            'client_reader': client_reader,
-                            'client_writer': client_writer,
-                            'remote_addr_type': remote_addr_type,
-                            'remote_addr': remote_addr,
-                            'remote_port': remote_port,
-                            'remote_reader': remote_reader,
-                            'remote_writer': remote_writer,
-                            })
-            
-            if after_remote_connection_hook_result is not None:
-                assert isinstance(after_remote_connection_hook_result, bool)
-                
-                is_allowed = after_remote_connection_hook_result
-                
-                if is_allowed:
-                    # positive if at least one feature hook is positive
-                    
-                    break
-    
-    if not is_allowed:
-        remote_writer.close()
-        return
-    
     return remote_reader, remote_writer
 
 @asyncio.coroutine
@@ -343,12 +289,12 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
     
     @asyncio.coroutine
     def client_handle_coro():
-        auth_result = yield from client_auth_socks_server(
+        is_allowed = yield from client_auth_socks_server(
                 socks_server_environ, client_reader, client_writer)
         
-        assert isinstance(auth_result, bool)
+        assert isinstance(is_allowed, bool)
         
-        if not auth_result:
+        if not is_allowed:
             return
         
         try:
@@ -428,6 +374,36 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
         
         remote_port = struct.unpack('!H', recv_data)[0]
         
+        for feature in features:
+            before_remote_connection_hook = feature.get('before_remote_connection_hook')
+            if before_remote_connection_hook is not None:
+                before_remote_connection_hook_result = yield from before_remote_connection_hook(
+                        socks_server_environ, {
+                                'client_reader': client_reader,
+                                'client_writer': client_writer,
+                                'remote_addr_type': remote_addr_type,
+                                'remote_addr': remote_addr,
+                                'remote_port': remote_port,
+                                })
+                
+                if before_remote_connection_hook_result is not None:
+                    assert isinstance(before_remote_connection_hook_result, bool)
+                    
+                    is_allowed = before_remote_connection_hook_result
+                    
+                    if is_allowed:
+                        # positive if at least one feature hook is positive
+                        
+                        break
+        
+        if not is_allowed:
+            client_writer.write(struct.pack(
+                    '!BB',
+                    0x05, # SOCKS version number (must be 0x05 for this version)
+                    0x02, # connection not allowed by ruleset
+                    ))
+            return
+        
         remote_connection_result = yield from remote_connection_socks_server(
                 socks_server_environ, client_reader, client_writer,
                 remote_addr_type, remote_addr, remote_port)
@@ -443,6 +419,38 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
         remote_reader, remote_writer = remote_connection_result
         
         try:
+            for feature in features:
+                after_remote_connection_hook = feature.get('after_remote_connection_hook')
+                if after_remote_connection_hook is not None:
+                    after_remote_connection_hook_result = yield from after_remote_connection_hook(
+                            socks_server_environ, {
+                                    'client_reader': client_reader,
+                                    'client_writer': client_writer,
+                                    'remote_addr_type': remote_addr_type,
+                                    'remote_addr': remote_addr,
+                                    'remote_port': remote_port,
+                                    'remote_reader': remote_reader,
+                                    'remote_writer': remote_writer,
+                                    })
+                    
+                    if after_remote_connection_hook_result is not None:
+                        assert isinstance(after_remote_connection_hook_result, bool)
+                        
+                        is_allowed = after_remote_connection_hook_result
+                        
+                        if is_allowed:
+                            # positive if at least one feature hook is positive
+                            
+                            break
+            
+            if not is_allowed:
+                client_writer.write(struct.pack(
+                    '!BB',
+                    0x05, # SOCKS version number (must be 0x05 for this version)
+                    0x02, # connection not allowed by ruleset
+                    ))
+                return
+            
             client_writer.write(struct.pack(
                     '!BBBB',
                     0x05, # SOCKS version number (must be 0x05 for this version)
