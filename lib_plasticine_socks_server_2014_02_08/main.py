@@ -137,20 +137,4 @@ def main():
             loop=loop,
             )
     
-    #@asyncio.coroutine
-    #def cnt_coro():
-    #    from datetime import datetime
-    #    cnt = 0
-    #    time = datetime.now()
-    #    delta = None
-    #    while True:
-    #        print('*** cnt is {!r}; delta is {!r} ***'.format(
-    #                cnt, delta))
-    #        next_time = datetime.now()
-    #        delta = next_time - time
-    #        time = next_time
-    #        cnt += 1
-    #        yield from asyncio.sleep(0.01, loop=loop)
-    #asyncio.async(cnt_coro(), loop=loop)
-    
     loop.run_until_complete(serve_future)
