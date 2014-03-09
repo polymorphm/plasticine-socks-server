@@ -96,7 +96,7 @@ def main():
             features=features,
             )
     
-    socks_server.create_socks_socket_socks_server(
+    socks_server.create_socks_sock_socks_server(
             socks_server_environ,
             unix=unix,
             ip=ip,
@@ -117,7 +117,7 @@ def main():
     loop = asyncio.get_event_loop()
     
     def shutdown_handler():
-        # XXX: shutdown may be executed before of execution init (or init completed)
+        # XXX shutdown may be executed before of execution init (or init completed)
         asyncio.async(
                 socks_server.shutdown_socks_server(socks_server_environ, loop),
                 loop=loop,
