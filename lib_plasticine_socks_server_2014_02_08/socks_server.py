@@ -33,7 +33,7 @@ REQUEST_TIMEOUT = 15.0
 READER_LIMIT = 1000000
 READER_BUF = 100000
 
-def preinit_socks_server(socks_server_environ, features=None):
+def socks_server_preinit(socks_server_environ, features=None):
     socks_server_environ['shutdown_event'] = asyncio.Event()
     socks_server_environ['loop'] = None
     socks_server_environ['socks_sock'] = None
@@ -48,7 +48,7 @@ def preinit_socks_server(socks_server_environ, features=None):
         if preinit_hook is not None:
             preinit_hook(socks_server_environ, {})
 
-def create_socks_sock_socks_server(socks_server_environ, unix=None, ip=None, port=None):
+def socks_server_create_socks_sock(socks_server_environ, unix=None, ip=None, port=None):
     assert unix is None or isinstance(unix, str)
     assert ip is None or isinstance(ip, str)
     assert port is None or isinstance(port, int)
@@ -97,20 +97,20 @@ def create_socks_sock_socks_server(socks_server_environ, unix=None, ip=None, por
     
     socks_server_environ['socks_sock'] = socks_sock
 
-def before_fork_socks_server(socks_server_environ):
+def socks_server_before_fork(socks_server_environ):
     for feature in socks_server_environ['features']:
         before_fork_hook = feature.get('before_fork_hook')
         if before_fork_hook is not None:
             before_fork_hook(socks_server_environ, {})
 
-def after_fork_socks_server(socks_server_environ):
+def socks_server_after_fork(socks_server_environ):
     for feature in socks_server_environ['features']:
         after_fork_hook = feature.get('after_fork_hook')
         if after_fork_hook is not None:
             after_fork_hook(socks_server_environ, {})
 
 @asyncio.coroutine
-def shutdown_socks_server(socks_server_environ, loop):
+def socks_server_shutdown(socks_server_environ, loop):
     # XXX shutdown may be executed before of execution init (or init completed)
     
     if socks_server_environ['loop'] is not None:
@@ -131,7 +131,7 @@ def shutdown_socks_server(socks_server_environ, loop):
     socks_server_environ['shutdown_event'].set()
 
 @asyncio.coroutine
-def init_socks_server(socks_server_environ, loop):
+def socks_server_init(socks_server_environ, loop):
     features = socks_server_environ['features']
     socks_server_environ['loop'] = loop
     
@@ -141,7 +141,7 @@ def init_socks_server(socks_server_environ, loop):
             yield from init_hook(socks_server_environ, {'loop': loop})
 
 @asyncio.coroutine
-def client_close_socks_server(socks_server_environ, client_reader, client_writer):
+def socks_server_client_close(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     
     try:
@@ -156,7 +156,7 @@ def client_close_socks_server(socks_server_environ, client_reader, client_writer
         client_writer.close()
 
 @asyncio.coroutine
-def client_auth_socks_server(socks_server_environ, client_reader, client_writer):
+def socks_server_client_auth(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     
@@ -229,7 +229,7 @@ def client_auth_socks_server(socks_server_environ, client_reader, client_writer)
     return True
 
 @asyncio.coroutine
-def remote_connection_socks_server(
+def socks_server_remote_connection(
         socks_server_environ, client_reader, client_writer,
         remote_addr_type, remote_addr, remote_port):
     features = socks_server_environ['features']
@@ -272,7 +272,7 @@ def remote_connection_socks_server(
     return remote_reader, remote_writer
 
 @asyncio.coroutine
-def client_handle_socks_server(socks_server_environ, client_reader, client_writer):
+def socks_server_client_handle(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     shutdown_event = socks_server_environ['shutdown_event']
@@ -289,7 +289,7 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
     
     @asyncio.coroutine
     def client_handle_coro():
-        is_allowed = yield from client_auth_socks_server(
+        is_allowed = yield from socks_server_client_auth(
                 socks_server_environ, client_reader, client_writer)
         
         assert isinstance(is_allowed, bool)
@@ -404,7 +404,7 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                     ))
             return
         
-        remote_connection_result = yield from remote_connection_socks_server(
+        remote_connection_result = yield from socks_server_remote_connection(
                 socks_server_environ, client_reader, client_writer,
                 remote_addr_type, remote_addr, remote_port)
         
@@ -570,7 +570,7 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
         shutdown_future.cancel()
 
 @asyncio.coroutine
-def accept_socks_server(socks_server_environ, client_reader, client_writer):
+def socks_server_accept(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     is_allowed = True
@@ -597,12 +597,12 @@ def accept_socks_server(socks_server_environ, client_reader, client_writer):
         if not is_allowed:
             return
         
-        yield from client_handle_socks_server(socks_server_environ, client_reader, client_writer)
+        yield from socks_server_client_handle(socks_server_environ, client_reader, client_writer)
     finally:
-        yield from client_close_socks_server(socks_server_environ, client_reader, client_writer)
+        yield from socks_server_client_close(socks_server_environ, client_reader, client_writer)
 
 @asyncio.coroutine
-def serve_socks_server(socks_server_environ):
+def socks_server_serve(socks_server_environ):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     shutdown_event = socks_server_environ['shutdown_event']
@@ -623,7 +623,7 @@ def serve_socks_server(socks_server_environ):
                 socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
         accept_future = asyncio.async(
-                accept_socks_server(socks_server_environ, client_reader, client_writer),
+                socks_server_accept(socks_server_environ, client_reader, client_writer),
                 loop=loop,
                 )
         

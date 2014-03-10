@@ -46,11 +46,11 @@ def import_features(features_str, config):
     for feature_shortcut_name in features_str.split():
         feature_name = get_feature_by_shortcut(feature_shortcut_name)
         feature_module = importlib.import_module(feature_name)
-        if not hasattr(feature_module, 'create_socks_server_feature'):
+        if not hasattr(feature_module, 'socks_server_create_feature'):
             raise ImportError('module {!r} has not feature factory'.format(
                     feature_module))
         
-        feature = feature_module.create_socks_server_feature()
+        feature = feature_module.socks_server_create_feature()
         
         read_config_hook = feature.get('read_config_hook')
         if read_config_hook:
@@ -102,19 +102,19 @@ def main():
     
     socks_server_environ = {}
     
-    socks_server.preinit_socks_server(
+    socks_server.socks_server_preinit(
             socks_server_environ,
             features=features,
             )
     
-    socks_server.create_socks_sock_socks_server(
+    socks_server.socks_server_create_socks_sock(
             socks_server_environ,
             unix=unix,
             ip=ip,
             port=port,
             )
     
-    socks_server.before_fork_socks_server(socks_server_environ)
+    socks_server.socks_server_before_fork(socks_server_environ)
     
     if not args.not_use_fork:
         pid = os.fork()
@@ -123,28 +123,28 @@ def main():
                 print(pid)
             os._exit(0)
     
-    socks_server.after_fork_socks_server(socks_server_environ)
+    socks_server.socks_server_after_fork(socks_server_environ)
     
     loop = asyncio.get_event_loop()
     
     def shutdown_handler():
         # XXX shutdown may be executed before of execution init (or init completed)
         asyncio.async(
-                socks_server.shutdown_socks_server(socks_server_environ, loop),
+                socks_server.socks_server_shutdown(socks_server_environ, loop),
                 loop=loop,
                 )
     loop.add_signal_handler(signal.SIGINT, shutdown_handler)
     loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
     
     init_future = asyncio.async(
-            socks_server.init_socks_server(socks_server_environ, loop),
+            socks_server.socks_server_init(socks_server_environ, loop),
             loop=loop,
             )
     
     loop.run_until_complete(init_future)
     
     serve_future = asyncio.async(
-            socks_server.serve_socks_server(socks_server_environ),
+            socks_server.socks_server_serve(socks_server_environ),
             loop=loop,
             )
     
