@@ -115,8 +115,6 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     addr_list = cache_get(addrinfo_cache, addrinfo_cache_keys, remote_addr)
     
     if addr_list is None:
-        print('*** {!r}: NOT in cache ***'.format(remote_addr))
-        
         for try_i in range(3):
             data, error = yield from loop.run_in_executor(None, addrinfo_request)
             if not error:
@@ -146,8 +144,6 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
         addr_list = first_addr_list + second_addr_list
         
         cache_put(addrinfo_cache, addrinfo_cache_keys, remote_addr, addr_list)
-    else:
-        print('*** {!r}: in cache ***'.format(remote_addr))
     
     for addr in addr_list:
         try:
