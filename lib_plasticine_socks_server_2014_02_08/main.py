@@ -30,13 +30,20 @@ import asyncio
 import signal
 from . import socks_server
 
-def get_feature_by_shortcut(feature):
-    if not isinstance(feature, str):
-        return feature
+BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
+        __name__.rsplit('.', maxsplit=1)[0]
+        )
+BUILTIN_FEATURE_NAME_LIST = (
+        # TODO list of builtin features
+        )
+
+def get_feature_by_shortcut(feature_name):
+    assert isinstance(feature_name, str)
     
-    # TODO ... if feature == '...': return '......'
+    if feature_name in BUILTIN_FEATURE_NAME_LIST:
+        return '{}.{}'.format(BUILTIN_FEATURE_NAMESPACE, feature_name)
     
-    return feature
+    return feature_name
 
 def import_features(features_str, config):
     assert isinstance(features_str, str)
