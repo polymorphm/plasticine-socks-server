@@ -157,6 +157,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                 socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
         return remote_reader, remote_writer
+    
+    return False
 
 def socks_server_create_feature():
     hook_environ = {
