@@ -34,7 +34,7 @@ BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
         __name__.rsplit('.', maxsplit=1)[0]
         )
 BUILTIN_FEATURE_NAME_LIST = (
-        # TODO list of builtin features
+        'addrinfo_appspot',
         )
 
 def get_feature_by_shortcut(feature_name):
