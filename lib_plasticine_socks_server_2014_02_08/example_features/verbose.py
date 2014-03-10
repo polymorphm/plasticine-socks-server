@@ -220,7 +220,7 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
     
     show_limit = 20
     if len(buf) > show_limit:
-        show_buf =  buf[:show_limit] + b'...'
+        show_buf = buf[:show_limit] + b'...'
     else:
         show_buf = buf
     
@@ -247,7 +247,7 @@ def remote_read_hook(hook_environ, socks_server_environ, hook_args):
     
     show_limit = 20
     if len(buf) > show_limit:
-        show_buf =  buf[:show_limit] + b'...'
+        show_buf = buf[:show_limit] + b'...'
     else:
         show_buf = buf
     
