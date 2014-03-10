@@ -24,6 +24,7 @@ assert str is not bytes
 
 import argparse
 import configparser
+import importlib
 import os
 import asyncio
 import signal
@@ -36,6 +37,31 @@ def get_feature_by_shortcut(feature):
     # TODO ... if feature == '...': return '......'
     
     return feature
+
+def import_features(features_str, config):
+    assert isinstance(features_str, str)
+    
+    features = []
+    
+    for feature_shortcut_name in features_str.split():
+        feature_name = get_feature_by_shortcut(feature_shortcut_name)
+        feature_module = importlib.import_module(feature_name)
+        if not hasattr(feature_module, 'create_socks_server_feature'):
+            raise ImportError('module {!r} has not feature factory'.format(
+                    feature_module))
+        
+        feature = feature_module.create_socks_server_feature()
+        
+        read_config_hook = feature.get('read_config_hook')
+        if read_config_hook:
+            read_config_hook({
+                    'config': config,
+                    'config_section': feature_shortcut_name,
+                    })
+        
+        features.append(feature)
+    
+    return tuple(features)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -70,22 +96,7 @@ def main():
     port = config.getint('plasticine-socks-server', 'port', fallback=None)
     
     if features_str:
-        feature_names = tuple(map(
-                get_feature_by_shortcut,
-                filter(
-                        None,
-                        (w.strip() for w in features_str.split(',')),
-                        ),
-                ))
-        features = tuple(
-                importlib(feature_name).create_socks_server_feature()
-                for feature_name in feature_names
-                )
-        
-        for feature in features:
-            read_config_hook = feature.get('read_config_hook')
-            if read_config_hook:
-                read_config_hook({'config': config})
+        features = import_features(features_str, config)
     else:
         features = None
     

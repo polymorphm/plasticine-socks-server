@@ -462,7 +462,7 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
             
             request_timeout_future.cancel()
             
-            def read_client_coro():
+            def client_read_coro():
                 while True:
                     try:
                         buf = yield from client_reader.read(READER_BUF)
@@ -470,9 +470,9 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                         buf = ''
                     
                     for feature in features:
-                        read_client_hook = feature.get('read_client_hook')
-                        if read_client_hook is not None:
-                            read_client_hook_result = yield from read_client_hook(socks_server_environ, {
+                        client_read_hook = feature.get('client_read_hook')
+                        if client_read_hook is not None:
+                            client_read_hook_result = yield from client_read_hook(socks_server_environ, {
                                     'client_reader': client_reader,
                                     'client_writer': client_writer,
                                     'remote_reader': remote_reader,
@@ -480,10 +480,10 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                                     'buf': buf,
                                     })
                             
-                            if read_client_hook_result is not None:
-                                assert isinstance(read_client_hook_result, bytes)
+                            if client_read_hook_result is not None:
+                                assert isinstance(client_read_hook_result, bytes)
                                 
-                                buf = read_client_hook_result
+                                buf = client_read_hook_result
                                 
                                 # XXX if ``buf`` will is empty -- will be disconnection
                     
@@ -497,7 +497,7 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                     except OSError:
                         return
             
-            def read_remote_coro():
+            def remote_read_coro():
                 while True:
                     try:
                         buf = yield from remote_reader.read(READER_BUF)
@@ -505,9 +505,9 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                         buf = ''
                     
                     for feature in features:
-                        read_remote_hook = feature.get('read_remote_hook')
-                        if read_remote_hook is not None:
-                            read_remote_hook_result = yield from read_remote_hook(socks_server_environ, {
+                        remote_read_hook = feature.get('remote_read_hook')
+                        if remote_read_hook is not None:
+                            remote_read_hook_result = yield from remote_read_hook(socks_server_environ, {
                                     'client_reader': client_reader,
                                     'client_writer': client_writer,
                                     'remote_reader': remote_reader,
@@ -515,10 +515,10 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                                     'buf': buf,
                                     })
                             
-                            if read_remote_hook_result is not None:
-                                assert isinstance(read_remote_hook_result, bytes)
+                            if remote_read_hook_result is not None:
+                                assert isinstance(remote_read_hook_result, bytes)
                                 
-                                buf = read_remote_hook_result
+                                buf = remote_read_hook_result
                                 
                                 # XXX if ``buf`` will is empty -- will be disconnection
                     
@@ -532,18 +532,25 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
                     except OSError:
                         return
             
-            read_client_future, read_remote_future = \
-                    asyncio.async(read_client_coro(), loop=loop), \
-                    asyncio.async(read_remote_coro(), loop=loop)
+            client_read_future, remote_read_future = \
+                    asyncio.async(client_read_coro(), loop=loop), \
+                    asyncio.async(remote_read_coro(), loop=loop)
             try:
                 yield from asyncio.wait(
-                        (read_client_future, read_remote_future),
+                        (client_read_future, remote_read_future),
                         return_when=asyncio.FIRST_COMPLETED,
                         loop=loop,
                         )
+                
+                if client_read_future.done() and not client_read_future.cancelled():
+                    # if not cancelled -- re-raise error
+                    client_read_future.result()
+                if remote_read_future.done() and not remote_read_future.cancelled():
+                    # if not cancelled -- re-raise error
+                    remote_read_future.result()
             finally:
-                read_client_future.cancel()
-                read_remote_future.cancel()
+                client_read_future.cancel()
+                remote_read_future.cancel()
         finally:
             remote_writer.close()
     
@@ -553,6 +560,10 @@ def client_handle_socks_server(socks_server_environ, client_reader, client_write
             asyncio.async(client_handle_coro(), loop=loop)
     try:
         yield from asyncio.wait((client_handle_future,), loop=loop)
+        
+        if not client_handle_future.cancelled():
+            # if not cancelled -- re-raise error
+            client_handle_future.result()
     finally:
         client_handle_future.cancel()
         request_timeout_future.cancel()
@@ -600,7 +611,7 @@ def serve_socks_server(socks_server_environ):
     for feature in features:
         serve_init_hook = feature.get('serve_init_hook')
         if serve_init_hook is not None:
-            yield from serve_init_hook(socks_server_environ, {'loop': loop})
+            yield from serve_init_hook(socks_server_environ, {})
     
     @asyncio.coroutine
     def shutdown_coro():
@@ -639,8 +650,13 @@ def serve_socks_server(socks_server_environ):
             if shutdown_event.is_set():
                 if client_handle_future_list:
                     yield from asyncio.wait(client_handle_future_list, loop=loop)
+                    
+                    for client_handle_future in client_handle_future_list:
+                        if not client_handle_future.cancelled():
+                            # if not cancelled -- re-raise error
+                            client_handle_future.result()
+                    
                     client_handle_future_list[:] = ()
-                return
         finally:
             server.close()
             shutdown_future.cancel()
