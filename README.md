@@ -10,7 +10,7 @@ Used asynchronous I/O (``asyncio`` module).
 Status
 ------
 
-Developer version (git master).
+Beta version (0.2).
 
 
 Pluggable feature
