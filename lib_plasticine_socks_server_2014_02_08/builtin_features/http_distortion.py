@@ -56,7 +56,7 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
     client_item['acc_buf'] += buf
     
     modified_acc_buf = client_item['acc_buf'].\
-            replace(b' HTTP/1.1\r', b' HTTP/1.1 ')
+            replace(b'\r\nHost', b'\r\nHosT')
     if modified_acc_buf != client_item['acc_buf']:
         buf = modified_acc_buf[-len(buf):]
     
