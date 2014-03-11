@@ -467,7 +467,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     try:
                         buf = yield from client_reader.read(READER_BUF)
                     except OSError:
-                        buf = ''
+                        buf = b''
                     
                     for feature in features:
                         client_read_hook = feature.get('client_read_hook')
@@ -502,7 +502,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     try:
                         buf = yield from remote_reader.read(READER_BUF)
                     except OSError:
-                        buf = ''
+                        buf = b''
                     
                     for feature in features:
                         remote_read_hook = feature.get('remote_read_hook')
