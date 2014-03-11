@@ -44,6 +44,9 @@ def init_hook(hook_environ, socks_server_environ, hook_args):
     assert loop is not None
 
 def cache_put(cache, cache_keys, key, value):
+    if value is None:
+        return
+    
     try:
         del cache[key]
     except KeyError:
