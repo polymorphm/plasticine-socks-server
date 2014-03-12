@@ -24,13 +24,54 @@ assert str is not bytes
 
 import functools
 import asyncio
+import re
 import weakref
+
+ACC_BUF_LEN = 10000
 
 @asyncio.coroutine
 def init_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_args['loop']
     hook_environ['loop'] = loop
     assert loop is not None
+
+def acc_buf_distortion(acc_buf):
+    repl_ctx = {
+            'allow_distortion': False,
+            }
+    
+    def repl(m):
+        if not repl_ctx['allow_distortion'] and m.group('start_marker'):
+            repl_ctx['allow_distortion'] = True
+            print('*** start_marker: {!r} ({!r}) ***'.format(
+                    m.group('start_marker'), m.group('uri')))
+            return m.group()
+        
+        if repl_ctx['allow_distortion'] and m.group('stop_marker'):
+            repl_ctx['allow_distortion'] = False
+            print('*** stop_marker: {!r} ***'.format(m.group('stop_marker')))
+            return m.group()
+        
+        if repl_ctx['allow_distortion'] and \
+                m.group('distortion') == b'\r\nHost':
+            print('*** distortion: {!r} ***'.format(m.group('distortion')))
+            return b'\r\nHosT'
+        
+        return m.group()
+    
+    modified_acc_buf = re.sub(
+            br'(?P<start_marker>'
+                br'(OPTIONS|GET|HEAD|POST|PUT|DELETE) (?P<uri>\S+) HTTP\/1\.1'
+            br')|(?P<stop_marker>\r\n\r\n)|'
+            br'(?P<distortion>'
+                br'\r\nHost'
+            br')',
+            repl,
+            acc_buf,
+            flags=re.S,
+            )
+    
+    return modified_acc_buf
 
 @asyncio.coroutine
 def client_read_hook(hook_environ, socks_server_environ, hook_args):
@@ -55,13 +96,13 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
     
     client_item['acc_buf'] += buf
     
-    modified_acc_buf = client_item['acc_buf'].\
-            replace(b'\r\nHost', b'\r\nHosT')
+    modified_acc_buf = acc_buf_distortion(client_item['acc_buf'])
+    
     if modified_acc_buf != client_item['acc_buf']:
         buf = modified_acc_buf[-len(buf):]
     
-    if len(client_item['acc_buf']) >= 20:
-        client_item['acc_buf'] = client_item['acc_buf'][-20:]
+    if len(client_item['acc_buf']) >= ACC_BUF_LEN:
+        client_item['acc_buf'] = client_item['acc_buf'][-ACC_BUF_LEN:]
     
     return buf
 
