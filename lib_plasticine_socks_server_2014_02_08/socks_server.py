@@ -33,6 +33,8 @@ REQUEST_TIMEOUT = 15.0
 READER_LIMIT = 1000000
 READER_BUF = 100000
 
+READ_IDLE_BUF = object()
+
 def socks_server_preinit(socks_server_environ, features=None):
     socks_server_environ['shutdown_event'] = asyncio.Event()
     socks_server_environ['loop'] = None
@@ -481,11 +483,15 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                                     })
                             
                             if client_read_hook_result is not None:
-                                assert isinstance(client_read_hook_result, bytes)
+                                assert isinstance(client_read_hook_result, bytes) \
+                                        or client_read_hook_result is READ_IDLE_BUF
                                 
                                 buf = client_read_hook_result
                                 
                                 # XXX if ``buf`` will is empty -- will be disconnection
+                    
+                    if buf is READ_IDLE_BUF:
+                        continue
                     
                     if not buf:
                         return
@@ -516,11 +522,15 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                                     })
                             
                             if remote_read_hook_result is not None:
-                                assert isinstance(remote_read_hook_result, bytes)
+                                assert isinstance(remote_read_hook_result, bytes) \
+                                        or remote_read_hook_result is READ_IDLE_BUF
                                 
                                 buf = remote_read_hook_result
                                 
                                 # XXX if ``buf`` will is empty -- will be disconnection
+                    
+                    if buf is READ_IDLE_BUF:
+                        continue
                     
                     if not buf:
                         return

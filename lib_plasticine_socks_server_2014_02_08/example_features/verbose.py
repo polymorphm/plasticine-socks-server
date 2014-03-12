@@ -6,6 +6,7 @@ assert str is not bytes
 
 import functools
 import asyncio
+from .. import socks_server
 
 def read_config_hook(hook_environ, hook_args):
     assert len(hook_args) == 2
@@ -230,7 +231,7 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
             show_buf,
             ))
     
-    # may return modified ``buf``.
+    # may return modified ``buf`` or may return ``socks_server.READ_IDLE_BUF``.
     # returns nothing to ignore this hook.
 
 @asyncio.coroutine
@@ -257,7 +258,7 @@ def remote_read_hook(hook_environ, socks_server_environ, hook_args):
             show_buf,
             ))
     
-    # may return modified ``buf``.
+    # may return modified ``buf`` or may return ``socks_server.READ_IDLE_BUF``.
     # returns nothing to ignore this hook.
 
 def socks_server_create_feature():
