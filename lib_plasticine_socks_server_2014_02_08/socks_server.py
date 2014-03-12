@@ -488,7 +488,8 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                                 
                                 buf = client_read_hook_result
                                 
-                                # XXX if ``buf`` will is empty -- will be disconnection
+                                if buf is READ_IDLE_BUF:
+                                    break
                     
                     if buf is READ_IDLE_BUF:
                         continue
@@ -527,7 +528,8 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                                 
                                 buf = remote_read_hook_result
                                 
-                                # XXX if ``buf`` will is empty -- will be disconnection
+                                if buf is READ_IDLE_BUF:
+                                    break
                     
                     if buf is READ_IDLE_BUF:
                         continue
