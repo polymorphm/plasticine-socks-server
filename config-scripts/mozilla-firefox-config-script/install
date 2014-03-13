@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+# -*- mode: python; coding: utf-8 -*-
+#
+# Copyright (c) 2014 Andrej Antonov <polymorphm@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+assert str is not bytes
+
+import sys
+import os, os.path
+
+PREF_LINES = (
+        'user_pref("network.proxy.socks", "::1");\n',
+        'user_pref("network.proxy.socks_port", 1080);\n',
+        'user_pref("network.proxy.socks_remote_dns", true);\n',
+        'user_pref("network.proxy.type", 1);\n',
+        )
+
+def get_profiles_dirs():
+    if 'APPDATA' in os.environ:
+        win_profiles_dir = os.path.join(
+                os.environ['APPDATA'],
+                'Mozilla',
+                'Firefox',
+                'Profiles',
+                )
+        if os.path.isdir(win_profiles_dir):
+            yield win_profiles_dir
+    
+    if 'HOME' in os.environ:
+        lin_profiles_dir = os.path.join(
+                os.environ['HOME'],
+                '.mozilla',
+                'firefox'
+                )
+        if os.path.isdir(lin_profiles_dir):
+            yield lin_profiles_dir
+
+def get_profile_dirs():
+   for profiles_dir in get_profiles_dirs():
+        profile_name_list = os.listdir(profiles_dir)
+        
+        for profile_name in profile_name_list:
+            if not profile_name.endswith('.default'):
+                continue
+            
+            yield os.path.join(profiles_dir, profile_name)
+
+def install(profile_dir):
+    pref_path = os.path.join(profile_dir, 'prefs.js')
+    new_pref_path = os.path.join(profile_dir, 'prefs.js.new-{}'.format(os.getpid()))
+    
+    if not os.path.isfile(pref_path):
+        return
+    
+    with open(pref_path, 'rt', encoding='utf-8', errors='replace') as r_fd, \
+            open(new_pref_path, 'wt', encoding='utf-8', newline='\n') as w_fd:
+        for line in r_fd:
+            w_fd.write(line)
+        
+        w_fd.write('\n\n')
+        for pref_line in PREF_LINES:
+            w_fd.write(pref_line)
+        w_fd.write('\n\n')
+    
+    os.replace(new_pref_path, pref_path)
+
+def uninstall(profile_dir):
+    pref_path = os.path.join(profile_dir, 'prefs.js')
+    new_pref_path = os.path.join(profile_dir, 'prefs.js.new-{}'.format(os.getpid()))
+    
+    if not os.path.isfile(pref_path):
+        return
+    
+    with open(pref_path, 'rt', encoding='utf-8', errors='replace') as r_fd, \
+            open(new_pref_path, 'wt', encoding='utf-8', newline='\n') as w_fd:
+        for line in r_fd:
+            if line in PREF_LINES:
+                continue
+            
+            w_fd.write(line)
+    
+    os.replace(new_pref_path, pref_path)
+
+def main():
+    if len(sys.argv) == 1:
+        install_func = install
+    elif len(sys.argv) == 2 and sys.argv[1] == 'uninstall':
+        install_func = uninstall
+    else:
+        print('invalid arguments', file=sys.stderr)
+        exit(2)
+    
+    for profile_dir in get_profile_dirs():
+        install_func(profile_dir)
+
+if __name__ == '__main__':
+    main()
