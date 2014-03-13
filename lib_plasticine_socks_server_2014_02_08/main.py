@@ -141,8 +141,14 @@ def main():
                 socks_server.socks_server_shutdown(socks_server_environ, loop),
                 loop=loop,
                 )
-    loop.add_signal_handler(signal.SIGINT, shutdown_handler)
-    loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
+    try:
+        loop.add_signal_handler(signal.SIGINT, shutdown_handler)
+    except NotImplementedError:
+        pass
+    try:
+        loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
+    except NotImplementedError:
+        pass
     
     init_future = asyncio.async(
             socks_server.socks_server_init(socks_server_environ, loop),
