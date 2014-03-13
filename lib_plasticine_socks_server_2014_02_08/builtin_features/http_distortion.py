@@ -43,18 +43,14 @@ def acc_buf_distortion(acc_buf):
     def repl(m):
         if not repl_ctx['allow_distortion'] and m.group('start_marker'):
             repl_ctx['allow_distortion'] = True
-            print('*** start_marker: {!r} ({!r}) ***'.format(
-                    m.group('start_marker'), m.group('uri')))
             return m.group()
         
         if repl_ctx['allow_distortion'] and m.group('stop_marker'):
             repl_ctx['allow_distortion'] = False
-            print('*** stop_marker: {!r} ***'.format(m.group('stop_marker')))
             return m.group()
         
         if repl_ctx['allow_distortion'] and \
                 m.group('distortion') == b'\r\nHost':
-            print('*** distortion: {!r} ***'.format(m.group('distortion')))
             return b'\r\nHosT'
         
         return m.group()
