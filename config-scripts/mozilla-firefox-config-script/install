@@ -70,15 +70,19 @@ def install(profile_dir):
     if not os.path.isfile(pref_path):
         return
     
+    used_line_list = []
+    
     with open(pref_path, 'rt', encoding='utf-8', errors='replace') as r_fd, \
             open(new_pref_path, 'wt', encoding='utf-8', newline='\n') as w_fd:
         for line in r_fd:
+            used_line_list.append(line)
             w_fd.write(line)
         
-        w_fd.write('\n\n')
         for pref_line in PREF_LINES:
+            if pref_line in used_line_list:
+                continue
+            
             w_fd.write(pref_line)
-        w_fd.write('\n\n')
     
     os.replace(new_pref_path, pref_path)
 
