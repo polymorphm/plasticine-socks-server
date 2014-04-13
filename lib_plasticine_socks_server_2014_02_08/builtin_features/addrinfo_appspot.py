@@ -126,8 +126,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
         if error or not isinstance(data, (tuple, list)):
             return
         
-        first_addr_list = []
-        second_addr_list = []
+        ipv6_addr_list = []
+        ipv4_addr_list = []
         
         for addrinfo_data in data:
             if not isinstance(addrinfo_data, (tuple, list)) and \
@@ -140,11 +140,11 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                 return
             
             if family_str == 'AF_INET6':
-                first_addr_list.append(addr)
+                ipv6_addr_list.append(addr)
             if family_str == 'AF_INET':
-                second_addr_list.append(addr)
+                ipv4_addr_list.append(addr)
         
-        addr_list = first_addr_list + second_addr_list
+        addr_list = ipv6_addr_list + ipv4_addr_list
         
         cache_put(addrinfo_cache, addrinfo_cache_keys, remote_addr, addr_list)
     
