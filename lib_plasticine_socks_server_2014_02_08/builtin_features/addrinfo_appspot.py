@@ -22,6 +22,7 @@
 
 assert str is not bytes
 
+import sys
 import functools
 import asyncio
 import datetime
@@ -144,7 +145,12 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             if family_str == 'AF_INET':
                 ipv4_addr_list.append(addr)
         
-        addr_list = ipv6_addr_list + ipv4_addr_list
+        if sys.platform == 'win32':
+            # hack for Microsoft Windows. IPv6 may to freeze instead of raising OSError
+            
+            addr_list = ipv4_addr_list + ipv6_addr_list
+        else:
+            addr_list = ipv6_addr_list + ipv4_addr_list
         
         cache_put(addrinfo_cache, addrinfo_cache_keys, remote_addr, addr_list)
     
