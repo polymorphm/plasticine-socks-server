@@ -38,7 +38,7 @@ READ_IDLE_BUF = object()
 def socks_server_preinit(socks_server_environ, features=None):
     socks_server_environ['shutdown_event'] = asyncio.Event()
     socks_server_environ['loop'] = None
-    socks_server_environ['socks_sock'] = None
+    socks_server_environ['socks_sock_list'] = None
     
     if features is None:
         features = ()
@@ -66,14 +66,16 @@ def socks_server_create_socks_sock(socks_server_environ, unix=None, ip=None, por
     for feature in features:
         create_socks_sock_hook = feature.get('create_socks_sock_hook')
         if create_socks_sock_hook is not None:
-            socks_sock = create_socks_sock_hook(socks_server_environ, {
+            socks_sock_list = create_socks_sock_hook(socks_server_environ, {
                     'unix': unix,
                     'ip': ip,
                     'port': port,
                     })
             
-            if socks_sock is not None:
-                socks_server_environ['socks_sock'] = socks_sock
+            if socks_sock_list is not None:
+                assert isinstance(socks_sock_list, (tuple, list))
+                
+                socks_server_environ['socks_sock_list'] = socks_sock_list
                 return
     
     if hasattr(socket, 'AF_UNIX') and unix is not None:
@@ -97,7 +99,7 @@ def socks_server_create_socks_sock(socks_server_environ, unix=None, ip=None, por
         
         socks_sock.bind((ip, port))
     
-    socks_server_environ['socks_sock'] = socks_sock
+    socks_server_environ['socks_sock_list'] = socks_sock,
 
 def socks_server_before_fork(socks_server_environ):
     for feature in socks_server_environ['features']:
@@ -618,7 +620,7 @@ def socks_server_serve(socks_server_environ):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     shutdown_event = socks_server_environ['shutdown_event']
-    socks_sock = socks_server_environ['socks_sock']
+    socks_sock_list = socks_server_environ['socks_sock_list']
     
     for feature in features:
         serve_init_hook = feature.get('serve_init_hook')
@@ -628,7 +630,8 @@ def socks_server_serve(socks_server_environ):
     @asyncio.coroutine
     def shutdown_coro():
         yield from shutdown_event.wait()
-        server.close()
+        for server in server_list:
+            server.close()
     
     def client_connected_cb(client_reader, client_writer):
         client_writer.get_extra_info('socket').setsockopt(
@@ -646,18 +649,17 @@ def socks_server_serve(socks_server_environ):
                 if not client_handle_future.done()
                 )
     
-    if hasattr(socket, 'AF_UNIX') and socks_sock.family == socket.AF_UNIX:
-        start_server_func = asyncio.start_unix_server
-    else:
-        start_server_func = asyncio.start_server
-    
     client_handle_future_list = []
     try:
-        server = yield from start_server_func(
-                client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop)
+        server_list = tuple(
+                (yield from asyncio.start_server(
+                        client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop))
+                for socks_sock in socks_sock_list
+                )
         shutdown_future = asyncio.async(shutdown_coro(), loop=loop)
         try:
-            yield from asyncio.wait((server.wait_closed(),), loop=loop)
+            for server in server_list:
+                yield from asyncio.wait((server.wait_closed(),), loop=loop)
             
             if shutdown_event.is_set():
                 if client_handle_future_list:
@@ -670,7 +672,8 @@ def socks_server_serve(socks_server_environ):
                     
                     client_handle_future_list[:] = ()
         finally:
-            server.close()
+            for server in server_list:
+                server.close()
             shutdown_future.cancel()
     finally:
         for client_handle_future in client_handle_future_list:

@@ -33,7 +33,7 @@ def create_socks_sock_hook(hook_environ, socks_server_environ, hook_args):
     print('creating socks socket (unix is {!r}; ip is {!r}; port is {!r})...'.format(
             unix, ip, port))
     
-    # may return socket-object.
+    # may return list of socket-objects.
     # returns nothing to ignore this hook.
 
 def before_fork_hook(hook_environ, socks_server_environ, hook_args):
