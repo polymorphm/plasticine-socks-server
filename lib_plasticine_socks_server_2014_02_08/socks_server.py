@@ -180,7 +180,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
     try:
         recv_data = yield from client_reader.readexactly(1)
     except (EOFError, OSError):
-        return
+        return False
     
     recv_data = struct.unpack('!B', recv_data)
     
@@ -192,7 +192,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
     try:
         recv_data = yield from client_reader.readexactly(1)
     except (EOFError, OSError):
-        return
+        return False
     
     recv_data = struct.unpack('!B', recv_data)
     
@@ -209,7 +209,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
         try:
             recv_data = yield from client_reader.readexactly(1)
         except (EOFError, OSError):
-            return
+            return False
         
         recv_data = struct.unpack('!B', recv_data)
         
