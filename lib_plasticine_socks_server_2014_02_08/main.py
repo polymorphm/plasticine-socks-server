@@ -46,7 +46,7 @@ def get_feature_by_shortcut(feature_name):
     
     return feature_name
 
-def import_features(features_str, config):
+def import_features(features_str, config, config_path):
     assert isinstance(features_str, str)
     
     features = []
@@ -64,6 +64,7 @@ def import_features(features_str, config):
         if read_config_hook:
             read_config_hook({
                     'config': config,
+                    'config_path': config_path,
                     'config_section': feature_shortcut_name,
                     })
         
@@ -104,7 +105,7 @@ def main():
     port = config.getint('plasticine-socks-server', 'port', fallback=None)
     
     if features_str:
-        features = import_features(features_str, config)
+        features = import_features(features_str, config, args.config)
     else:
         features = None
     

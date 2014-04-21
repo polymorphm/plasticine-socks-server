@@ -9,8 +9,9 @@ import asyncio
 from .. import socks_server
 
 def read_config_hook(hook_environ, hook_args):
-    assert len(hook_args) == 2
+    assert len(hook_args) == 3
     config = hook_args['config']
+    config_path = hook_args['config_path']
     config_section = hook_args['config_section']
     
     print('reading config...')
