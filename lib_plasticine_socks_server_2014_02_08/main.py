@@ -28,6 +28,7 @@ import importlib
 import os
 import asyncio
 import signal
+from . import config_import
 from . import socks_server
 
 BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
@@ -96,8 +97,7 @@ def main():
     
     args = parser.parse_args()
     
-    config = configparser.ConfigParser()
-    config.read_file(open(args.config, mode='r', encoding='utf-8', errors='replace'))
+    config = config_import.config_import(args.config)
     
     features_str = config.get('plasticine-socks-server', 'features', fallback=None)
     unix = config.get('plasticine-socks-server', 'unix', fallback=None)
