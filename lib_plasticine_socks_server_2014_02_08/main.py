@@ -85,9 +85,9 @@ def main():
             help='not do use fork operation',
             )
     parser.add_argument(
-            '--not-show-pid',
-            action='store_true',
-            help='not show pid when doing fork',
+            '--pid-file',
+            metavar='PID-FILE-PATH',
+            help='path to pid file',
             )
     parser.add_argument(
             'config',
@@ -128,8 +128,9 @@ def main():
     if not args.not_use_fork:
         pid = os.fork()
         if pid:
-            if not args.not_show_pid:
-                print(pid)
+            if args.pid_file is not None:
+                with open(args.pid_file, mode='w', encoding='utf-8', newline='\n') as pid_fd:
+                    pid_fd.write('{}\n'.format(pid))
             os._exit(0)
     
     socks_server.socks_server_after_fork(socks_server_environ)
