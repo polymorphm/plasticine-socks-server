@@ -8,20 +8,28 @@ import functools
 import asyncio
 from .. import socks_server
 
+def try_print(*args, **kwargs):
+    # safe version of ``print(..)``
+    
+    try:
+        return print(*args, **kwargs)
+    except (OSError, ValueError):
+        pass
+
 def read_config_hook(hook_environ, hook_args):
     assert len(hook_args) == 3
     config = hook_args['config']
     config_path = hook_args['config_path']
     config_section = hook_args['config_section']
     
-    print('reading config...')
+    try_print('reading config...')
     
     # returns nothing
 
 def preinit_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 0
     
-    print('preinit...')
+    try_print('preinit...')
     
     # returns nothing
 
@@ -31,7 +39,7 @@ def create_socks_sock_hook(hook_environ, socks_server_environ, hook_args):
     ip = hook_args['ip']
     port = hook_args['port']
     
-    print('creating socks socket (unix is {!r}; ip is {!r}; port is {!r})...'.format(
+    try_print('creating socks socket (unix is {!r}; ip is {!r}; port is {!r})...'.format(
             unix, ip, port))
     
     # may return list of socket-objects.
@@ -40,7 +48,7 @@ def create_socks_sock_hook(hook_environ, socks_server_environ, hook_args):
 def before_fork_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 0
     
-    print('preparing to fork...')
+    try_print('preparing to fork...')
     from os import getpid
     hook_environ['before_fork_pid'] = getpid()
     
@@ -52,9 +60,9 @@ def after_fork_hook(hook_environ, socks_server_environ, hook_args):
     from os import getpid
     hook_environ['after_fork_pid'] = getpid()
     if hook_environ['after_fork_pid'] != hook_environ['before_fork_pid']:
-        print('forked')
+        try_print('forked')
     else:
-        print('fork missed')
+        try_print('fork missed')
     
     # returns nothing
 
@@ -63,7 +71,7 @@ def shutdown_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 1
     loop = hook_args['loop']
     
-    print('shutdown...')
+    try_print('shutdown...')
     if hook_environ['loop'] is not None:
         loop = hook_environ['loop']
     else:
@@ -77,7 +85,7 @@ def init_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 1
     loop = hook_args['loop']
     
-    print('init...')
+    try_print('init...')
     hook_environ['loop'] = loop
     assert loop is not None
     
@@ -90,7 +98,7 @@ def serve_init_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('starting serve...')
+    try_print('starting serve...')
     
     # returns nothing
 
@@ -103,7 +111,7 @@ def close_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: client closed'.format(
+    try_print('{!r}: client closed'.format(
             client_writer.get_extra_info('peername'),
             ))
     
@@ -118,7 +126,7 @@ def accept_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: client accepted'.format(
+    try_print('{!r}: client accepted'.format(
             client_writer.get_extra_info('peername'),
             ))
     
@@ -134,7 +142,7 @@ def auth_handle_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: auth...'.format(
+    try_print('{!r}: auth...'.format(
             client_writer.get_extra_info('peername'),
             ))
     
@@ -154,7 +162,7 @@ def before_remote_connection_hook(hook_environ, socks_server_environ, hook_args)
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: required connection to: {!r}/{!r}/{!r}'.format(
+    try_print('{!r}: required connection to: {!r}/{!r}/{!r}'.format(
             client_writer.get_extra_info('peername'),
             remote_addr_type,
             remote_addr,
@@ -176,7 +184,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: opening connection to: {!r}/{!r}/{!r}...'.format(
+    try_print('{!r}: opening connection to: {!r}/{!r}/{!r}...'.format(
             client_writer.get_extra_info('peername'),
             remote_addr_type,
             remote_addr,
@@ -200,7 +208,7 @@ def after_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_environ['loop']
     assert loop is not None
     
-    print('{!r}: connected to: {!r}'.format(
+    try_print('{!r}: connected to: {!r}'.format(
             client_writer.get_extra_info('peername'),
             remote_writer.get_extra_info('peername'),
             ))
@@ -226,7 +234,7 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
     else:
         show_buf = buf
     
-    print('{!r}: readed data ({!r} bytes) from client: {!r}'.format(
+    try_print('{!r}: readed data ({!r} bytes) from client: {!r}'.format(
             client_writer.get_extra_info('peername'),
             len(buf),
             show_buf,
@@ -253,7 +261,7 @@ def remote_read_hook(hook_environ, socks_server_environ, hook_args):
     else:
         show_buf = buf
     
-    print('{!r}: readed data ({!r} bytes) from remote: {!r}'.format(
+    try_print('{!r}: readed data ({!r} bytes) from remote: {!r}'.format(
             client_writer.get_extra_info('peername'),
             len(buf),
             show_buf,
