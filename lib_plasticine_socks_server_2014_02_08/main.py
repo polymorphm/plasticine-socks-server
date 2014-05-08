@@ -76,7 +76,7 @@ def import_features(features_str, config, config_path):
 def main():
     parser = argparse.ArgumentParser(
             description='SOCKS (SOCKS Protocol Version 5) server with '
-                    'support non-regular use cases via plugins',
+                    'support non-regular use cases via pluggable features',
             )
     
     parser.add_argument(
