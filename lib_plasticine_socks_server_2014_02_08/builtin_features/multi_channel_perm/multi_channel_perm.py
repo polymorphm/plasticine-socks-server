@@ -34,6 +34,14 @@ import struct
 from lib_plasticine_socks_server_2014_02_08 import config_import
 from lib_plasticine_socks_server_2014_02_08 import socks_server
 
+def try_print(*args, **kwargs):
+    # safe version of ``print(..)``
+    
+    try:
+        return print(*args, **kwargs)
+    except (OSError, ValueError):
+        pass
+
 def to_ipv6_str(ip_str):
     assert isinstance(ip_str, str)
     
@@ -192,6 +200,10 @@ def perm_cache_refresh(hook_environ):
     loop = hook_environ['loop']
     assert loop is not None
     
+    use_debug = hook_environ['use_debug']
+    if use_debug:
+        try_print('started perm_cache_refresh')
+    
     old_perm_cache = hook_environ['perm_cache']
     
     new_perm_cache = yield from async_perm_load(hook_environ)
@@ -199,6 +211,12 @@ def perm_cache_refresh(hook_environ):
     if old_perm_cache is hook_environ['perm_cache']:
         # set new value -- only if old value is not changed
         hook_environ['perm_cache'] = new_perm_cache
+        
+        if use_debug:
+            try_print('succeed perm_cache_refresh')
+    else:
+        if use_debug:
+            try_print('canceled conflicted perm_cache_refresh')
 
 @asyncio.coroutine
 def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
@@ -220,6 +238,7 @@ def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
     
     return True, {
             'exit_list': exit_list,
+            'username_bytes': username_bytes,
             }
 
 def read_config_hook(hook_environ, hook_args):
@@ -229,6 +248,10 @@ def read_config_hook(hook_environ, hook_args):
     
     hook_environ['config_path'] = config_path
     hook_environ['config_section'] = config_section
+    hook_environ['use_debug'] = config.getboolean(
+            config_section, 'use_debug',
+            fallback=False,
+            )
 
 def create_socks_sock_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 3
@@ -434,11 +457,15 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_addr = hook_args['remote_addr']
     remote_port = hook_args['remote_port']
     
+    use_debug = hook_environ['use_debug']
     loop = hook_environ['loop']
     assert loop is not None
     
     client_data = hook_environ['client_map'][client_writer]
     exit_list = client_data['exit_list']
+    username_bytes = client_data['username_bytes']
+    peername_host, peername_port = client_writer.get_extra_info('peername')[:2]
+    sockname_host, sockname_port = client_writer.get_extra_info('sockname')[:2]
     
     for exit_hostname in exit_list:
         family = None
@@ -455,7 +482,13 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
         else:
             family = socket.AF_INET6
         
-        #print('*** {} (family {!r}) -> {} (port {}): connection...***'.format(exit_hostname, family, remote_addr, remote_port))
+        if use_debug:
+            try_print('started conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                    username_bytes,
+                    peername_host, peername_port,
+                    sockname_host, sockname_port,
+                    exit_hostname, remote_addr, remote_port
+                    ))
         
         try:
             remote_reader, remote_writer = yield from asyncio.open_connection(
@@ -464,7 +497,13 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                     family=family, local_addr=(exit_hostname, 0),
                     )
         except OSError:
-            #print('*** {} (family {!r}) -> {} (port {}): connection fail ***'.format(exit_hostname, family, remote_addr, remote_port))
+            if use_debug:
+                try_print('failed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                        username_bytes,
+                        peername_host, peername_port,
+                        sockname_host, sockname_port,
+                        exit_hostname, remote_addr, remote_port
+                        ))
             
             continue
         else:
@@ -475,7 +514,13 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_writer.get_extra_info('socket').setsockopt(
             socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     
-    #print('*** {} (family {!r}) -> {} (port {}): connection success ***'.format(exit_hostname, family, remote_addr, remote_port))
+    if use_debug:
+        try_print('succeed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                username_bytes,
+                peername_host, peername_port,
+                sockname_host, sockname_port,
+                exit_hostname, remote_addr, remote_port
+                ))
     
     return remote_reader, remote_writer
 
