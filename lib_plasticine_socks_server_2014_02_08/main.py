@@ -37,6 +37,7 @@ BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
 BUILTIN_FEATURE_NAME_LIST = (
         'addrinfo_appspot',
         'http_distortion',
+        'multi_channel_perm',
         )
 
 def get_feature_by_shortcut(feature_name):
