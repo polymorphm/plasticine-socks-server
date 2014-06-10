@@ -26,6 +26,7 @@ import sys
 import os, os.path
 import weakref
 import time
+import datetime
 import functools
 import asyncio
 import signal
@@ -33,6 +34,11 @@ import socket
 import struct
 from lib_plasticine_socks_server_2014_02_08 import config_import
 from lib_plasticine_socks_server_2014_02_08 import socks_server
+
+def get_time_str():
+    return datetime.datetime.now(
+            tz=datetime.timezone(datetime.timedelta(seconds=-time.timezone)),
+            ).strftime('%Y-%m-%dT%H:%M:%S%z')
 
 def try_print(*args, **kwargs):
     # safe version of ``print(..)``
@@ -202,7 +208,7 @@ def perm_cache_refresh(hook_environ):
     
     use_debug = hook_environ['use_debug']
     if use_debug:
-        try_print('started perm_cache_refresh')
+        try_print('<{}> started perm_cache_refresh'.format(get_time_str()))
     
     old_perm_cache = hook_environ['perm_cache']
     
@@ -213,10 +219,10 @@ def perm_cache_refresh(hook_environ):
         hook_environ['perm_cache'] = new_perm_cache
         
         if use_debug:
-            try_print('succeed perm_cache_refresh')
+            try_print('<{}> succeed perm_cache_refresh'.format(get_time_str()))
     else:
         if use_debug:
-            try_print('canceled conflicted perm_cache_refresh')
+            try_print('<{}> canceled conflicted perm_cache_refresh'.format(get_time_str()))
 
 @asyncio.coroutine
 def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
@@ -483,7 +489,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             family = socket.AF_INET6
         
         if use_debug:
-            try_print('started conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+            try_print('<{}> started conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                    get_time_str(),
                     username_bytes,
                     peername_host, peername_port,
                     sockname_host, sockname_port,
@@ -498,7 +505,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                     )
         except OSError:
             if use_debug:
-                try_print('failed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                try_print('<{}> failed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                        get_time_str(),
                         username_bytes,
                         peername_host, peername_port,
                         sockname_host, sockname_port,
@@ -515,7 +523,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     
     if use_debug:
-        try_print('succeed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+        try_print('<{}> succeed conn: user({!r}) {}:{} -> {}:{} --> {} -> {}:{}'.format(
+                get_time_str(),
                 username_bytes,
                 peername_host, peername_port,
                 sockname_host, sockname_port,
