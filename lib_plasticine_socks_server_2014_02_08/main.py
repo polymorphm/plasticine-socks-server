@@ -73,6 +73,10 @@ def import_features(features_str, config, config_path):
     
     return tuple(features)
 
+def write_pid(pid_file, pid):
+    with open(pid_file, mode='w', encoding='utf-8', newline='\n') as pid_fd:
+        pid_fd.write('{}\n'.format(pid))
+
 def main():
     parser = argparse.ArgumentParser(
             description='SOCKS (SOCKS Protocol Version 5) server with '
@@ -128,10 +132,13 @@ def main():
     if not args.not_use_fork:
         pid = os.fork()
         if pid:
+            # XXX if used fork: than *parent* must to write pid of child
             if args.pid_file is not None:
-                with open(args.pid_file, mode='w', encoding='utf-8', newline='\n') as pid_fd:
-                    pid_fd.write('{}\n'.format(pid))
+                write_pid(args.pid_file, pid)
+            
             os._exit(0)
+    elif args.pid_file is not None:
+        write_pid(args.pid_file, os.getpid())
     
     socks_server.socks_server_after_fork(socks_server_environ)
     
