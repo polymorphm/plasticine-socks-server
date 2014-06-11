@@ -32,6 +32,7 @@ import asyncio
 import signal
 import socket
 import struct
+import random
 from lib_plasticine_socks_server_2014_02_08 import config_import
 from lib_plasticine_socks_server_2014_02_08 import socks_server
 
@@ -123,7 +124,13 @@ def blocking_perm_load(hook_environ):
             
             continue
         
-        if perm_key.startswith('socks_'):
+        if perm_key.startswith('socks_') or \
+                perm_key.startswith('random_socks_') or perm_key.startswith('shuffle_socks_'):
+            exit_list_options = {
+                    'use_random_socks': perm_key.startswith('random_socks_'),
+                    'use_shuffle_socks': perm_key.startswith('shuffle_socks_'),
+                    }
+            
             perm_value_split = one_clean_lsplit(perm_value, ';')
             
             if len(perm_value_split) != 2:
@@ -146,7 +153,7 @@ def blocking_perm_load(hook_environ):
                 show_syntax_error(perm_key, perm_value)
                 continue
             
-            socks_list.append((socks_symbol, listen_addr, exit_list))
+            socks_list.append((socks_symbol, listen_addr, exit_list, exit_list_options))
             
             continue
         
@@ -160,10 +167,11 @@ def blocking_perm_load(hook_environ):
             
             continue
     
-    # optimization map for get exit_list
+    # optimization maps for get exit_list
     exit_list_optim_map = {}
+    exit_list_options_optim_map = {}
     
-    for socks_symbol, listen_addr, exit_list in socks_list:
+    for socks_symbol, listen_addr, exit_list, exit_list_options in socks_list:
         for perm_symbol, perm_socks_symbol_list in perm_list:
             if '*' not in perm_socks_symbol_list and socks_symbol not in perm_socks_symbol_list:
                 continue
@@ -184,12 +192,19 @@ def blocking_perm_load(hook_environ):
                         username.encode(),
                         password.encode(),
                         )] = exit_list
+                exit_list_options_optim_map[(
+                        socket.inet_pton(socket.AF_INET6, listen_addr[0]),
+                        listen_addr[1],
+                        username.encode(),
+                        password.encode(),
+                        )] = exit_list_options
     
     return {
             'user_list': tuple(user_list),
             'socks_list': tuple(socks_list),
             'perm_list': tuple(perm_list),
             'exit_list_optim_map': exit_list_optim_map,
+            'exit_list_options_optim_map': exit_list_options_optim_map,
             }
 
 @asyncio.coroutine
@@ -231,8 +246,15 @@ def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
     
     perm_cache = hook_environ['perm_cache']
     exit_list_optim_map = perm_cache['exit_list_optim_map']
+    exit_list_options_optim_map = perm_cache['exit_list_options_optim_map']
     
     exit_list = exit_list_optim_map.get((
+            socket.inet_pton(socket.AF_INET6, client_writer.get_extra_info('sockname')[0]),
+            client_writer.get_extra_info('sockname')[1],
+            username_bytes,
+            password_bytes,
+            ))
+    exit_list_options = exit_list_options_optim_map.get((
             socket.inet_pton(socket.AF_INET6, client_writer.get_extra_info('sockname')[0]),
             client_writer.get_extra_info('sockname')[1],
             username_bytes,
@@ -244,6 +266,7 @@ def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
     
     return True, {
             'exit_list': exit_list,
+            'exit_list_options': exit_list_options,
             'username_bytes': username_bytes,
             }
 
@@ -267,7 +290,8 @@ def create_socks_sock_hook(hook_environ, socks_server_environ, hook_args):
     
     socks_sock_list = []
     
-    for socks_symbol, (listen_hostname, listen_port), exit_list in perm_cache['socks_list']:
+    for socks_symbol, (listen_hostname, listen_port), exit_list, exit_listoptions \
+            in perm_cache['socks_list']:
         socks_sock = socket.socket(socket.AF_INET6)
         
         if hasattr(socket, 'SO_REUSEADDR'):
@@ -469,11 +493,21 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     
     client_data = hook_environ['client_map'][client_writer]
     exit_list = client_data['exit_list']
+    exit_list_options = client_data['exit_list_options']
     username_bytes = client_data['username_bytes']
     peername_host, peername_port = client_writer.get_extra_info('peername')[:2]
     sockname_host, sockname_port = client_writer.get_extra_info('sockname')[:2]
     
-    for exit_hostname in exit_list:
+    if exit_list_options['use_random_socks']:
+        exit_list_iter = (random.choice(exit_list) for i in range(3))
+    elif exit_list_options['use_shuffle_socks']:
+        shuffle_exit_list = list(exit_list)
+        random.shuffle(shuffle_exit_list)
+        exit_list_iter = iter(shuffle_exit_list)
+    else:
+        exit_list_iter = iter(exit_list)
+    
+    for exit_hostname in exit_list_iter:
         family = None
         
         try:
