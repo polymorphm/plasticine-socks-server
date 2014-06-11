@@ -87,21 +87,6 @@ def blocking_perm_load(hook_environ):
         except OSError:
             pass
     
-    clean_split = lambda s, sep: tuple(filter(None, map(
-            lambda s: s.strip(),
-            s.split(sep=sep)
-            )))
-    
-    one_clean_lsplit = lambda s, sep: tuple(filter(None, map(
-            lambda s: s.strip(),
-            s.split(sep=sep, maxsplit=1)
-            )))
-    
-    one_clean_rsplit = lambda s, sep: tuple(filter(None, map(
-            lambda s: s.strip(),
-            s.rsplit(sep=sep, maxsplit=1)
-            )))
-    
     config_path = hook_environ['config_path']
     config_section = hook_environ['config_section']
     config = config_import.config_import(config_path)
@@ -111,7 +96,7 @@ def blocking_perm_load(hook_environ):
         perm_value = perm_config[perm_key]
         
         if perm_key.startswith('user_'):
-            perm_value_split = clean_split(perm_value, ';')
+            perm_value_split = perm_value.replace(';', ' ').split()
             
             if len(perm_value_split) != 3:
                 show_syntax_error(perm_key, perm_value)
@@ -131,7 +116,7 @@ def blocking_perm_load(hook_environ):
                     'use_shuffle_socks': perm_key.startswith('shuffle_socks_'),
                     }
             
-            perm_value_split = one_clean_lsplit(perm_value, ';')
+            perm_value_split = perm_value.replace(';', ' ').split(maxsplit=1)
             
             if len(perm_value_split) != 2:
                 show_syntax_error(perm_key, perm_value)
@@ -140,8 +125,8 @@ def blocking_perm_load(hook_environ):
             socks_symbol = perm_key
             listen_addr_str, exit_list_str = perm_value_split
             
-            listen_addr = one_clean_rsplit(listen_addr_str, ':')
-            exit_list = clean_split(exit_list_str, ';')
+            listen_addr = listen_addr_str.rsplit(sep=':', maxsplit=1)
+            exit_list = exit_list_str.split()
             
             if len(listen_addr) != 2:
                 show_syntax_error(perm_key, perm_value)
@@ -158,7 +143,7 @@ def blocking_perm_load(hook_environ):
             continue
         
         if perm_key.startswith('perm_'):
-            perm_value_split = clean_split(perm_value, ';')
+            perm_value_split = perm_value.replace(';', ' ').split()
             
             perm_symbol = perm_key
             socks_symbol_list = perm_value_split
