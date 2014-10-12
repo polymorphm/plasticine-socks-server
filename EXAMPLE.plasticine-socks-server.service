@@ -1,0 +1,9 @@
+[Unit]
+Description=SOCKS (SOCKS Protocol Version 5) server with support non-regular use cases via pluggable features
+After=network.target
+
+[Service]
+ExecStart=/path/to/plasticine-socks-server /path/to/plasticine-socks-server.cfg
+
+[Install]
+WantedBy=default.target
