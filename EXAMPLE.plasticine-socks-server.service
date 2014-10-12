@@ -3,6 +3,7 @@ Description=SOCKS (SOCKS Protocol Version 5) server with support non-regular use
 After=network.target
 
 [Service]
+Type=notify
 ExecStart=/path/to/plasticine-socks-server /path/to/plasticine-socks-server.cfg
 
 [Install]
