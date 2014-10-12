@@ -85,9 +85,9 @@ def main():
             )
     
     parser.add_argument(
-            '--not-use-fork',
+            '--use-fork',
             action='store_true',
-            help='not do use fork operation',
+            help='use fork operation (after sockets creation)',
             )
     parser.add_argument(
             '--pid-file',
@@ -130,7 +130,7 @@ def main():
     
     socks_server.socks_server_before_fork(socks_server_environ)
     
-    if not args.not_use_fork:
+    if args.use_fork:
         pid = os.fork()
         if pid:
             # XXX if used fork: than *parent* must to write pid of child
