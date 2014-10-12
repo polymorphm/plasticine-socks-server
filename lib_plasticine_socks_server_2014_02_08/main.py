@@ -31,6 +31,11 @@ import signal
 from . import config_import
 from . import socks_server
 
+try:
+    from  systemd import daemon
+except ImportError:
+    daemon = None
+
 BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
         __name__.rsplit('.', maxsplit=1)[0]
         )
@@ -140,6 +145,12 @@ def main():
             os._exit(0)
     elif args.pid_file is not None:
         write_pid(args.pid_file, os.getpid())
+    
+    if daemon is not None:
+        daemon.notify(
+                'READY=1\nMAINPID={}'.format(os.getpid()),
+                unset_environment=True,
+                )
     
     socks_server.socks_server_after_fork(socks_server_environ)
     
