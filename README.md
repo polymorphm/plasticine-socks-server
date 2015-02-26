@@ -10,7 +10,7 @@ Used asynchronous I/O (``asyncio`` module).
 Status
 ------
 
-Beta release plasticine-socks-server-0.9.1 .
+Release: plasticine-socks-server-0.9.2 .
 
 
 Pluggable feature
