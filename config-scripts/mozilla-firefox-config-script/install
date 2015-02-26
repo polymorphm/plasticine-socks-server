@@ -58,7 +58,8 @@ def get_profile_dirs():
         profile_name_list = os.listdir(profiles_dir)
         
         for profile_name in profile_name_list:
-            if not profile_name.endswith('.default'):
+            if '.default-' not in profile_name and \
+                    not profile_name.endswith('.default'):
                 continue
             
             yield os.path.join(profiles_dir, profile_name)
