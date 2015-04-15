@@ -152,9 +152,8 @@ def blocking_perm_load(hook_environ):
             
             continue
     
-    # optimization maps for get exit_list
-    exit_list_optim_map = {}
-    exit_list_options_optim_map = {}
+    # optimization maps for get -- exit_list and exit_list_options
+    optim_map = {}
     
     for socks_symbol, listen_addr, exit_list, exit_list_options in socks_list:
         for perm_symbol, perm_socks_symbol_list in perm_list:
@@ -171,25 +170,18 @@ def blocking_perm_load(hook_environ):
                 if password == '*':
                     password = ''
                 
-                exit_list_optim_map[(
+                optim_map[(
                         socket.inet_pton(socket.AF_INET6, listen_addr[0]),
                         listen_addr[1],
                         username.encode(),
                         password.encode(),
-                        )] = exit_list
-                exit_list_options_optim_map[(
-                        socket.inet_pton(socket.AF_INET6, listen_addr[0]),
-                        listen_addr[1],
-                        username.encode(),
-                        password.encode(),
-                        )] = exit_list_options
+                        )] = exit_list, exit_list_options
     
     return {
             'user_list': tuple(user_list),
             'socks_list': tuple(socks_list),
             'perm_list': tuple(perm_list),
-            'exit_list_optim_map': exit_list_optim_map,
-            'exit_list_options_optim_map': exit_list_options_optim_map,
+            'optim_map': optim_map,
             }
 
 @asyncio.coroutine
@@ -230,30 +222,27 @@ def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
     assert loop is not None
     
     perm_cache = hook_environ['perm_cache']
-    exit_list_optim_map = perm_cache['exit_list_optim_map']
-    exit_list_options_optim_map = perm_cache['exit_list_options_optim_map']
+    optim_map = perm_cache['optim_map']
     
-    exit_list = exit_list_optim_map.get((
-            socket.inet_pton(socket.AF_INET6, client_writer.get_extra_info('sockname')[0]),
-            client_writer.get_extra_info('sockname')[1],
-            username_bytes,
-            password_bytes,
-            ))
-    exit_list_options = exit_list_options_optim_map.get((
-            socket.inet_pton(socket.AF_INET6, client_writer.get_extra_info('sockname')[0]),
-            client_writer.get_extra_info('sockname')[1],
-            username_bytes,
-            password_bytes,
-            ))
+    for client_writer_host in (
+            client_writer.get_extra_info('sockname')[0],
+            '::',
+            ):
+        exit_list, exit_list_options = optim_map.get((
+                socket.inet_pton(socket.AF_INET6, client_writer_host),
+                client_writer.get_extra_info('sockname')[1],
+                username_bytes,
+                password_bytes,
+                ), (None, None))
+        
+        if exit_list is not None:
+            return True, {
+                    'exit_list': exit_list,
+                    'exit_list_options': exit_list_options,
+                    'username_bytes': username_bytes,
+                    }
     
-    if exit_list is None:
-        return False, None
-    
-    return True, {
-            'exit_list': exit_list,
-            'exit_list_options': exit_list_options,
-            'username_bytes': username_bytes,
-            }
+    return False, None
 
 def read_config_hook(hook_environ, hook_args):
     config = hook_args['config']
