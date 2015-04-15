@@ -247,7 +247,7 @@ def perm_check(hook_environ, client_writer, username_bytes, password_bytes):
             ))
     
     if exit_list is None:
-        False, None
+        return False, None
     
     return True, {
             'exit_list': exit_list,
