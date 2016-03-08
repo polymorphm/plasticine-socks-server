@@ -37,6 +37,7 @@ REQUEST_TIMEOUT = 5.0
 REQUEST_LIMIT = 1000000
 CACHE_LEN = 1000
 CACHE_EXPIRE = datetime.timedelta(hours=10)
+CLUSTER_CACHE_LEN = 100
 
 @asyncio.coroutine
 def init_hook(hook_environ, socks_server_environ, hook_args):
@@ -83,6 +84,24 @@ def cache_get(cache, cache_keys, key):
     
     return value
 
+def cluster_cache_init(cluster_cache, cluster_cache_keys):
+    assert isinstance(cluster_cache, dict)
+    assert isinstance(cluster_cache_keys, dict)
+    
+    for node_i in range(CLUSTER_CACHE_LEN):
+        cluster_cache[node_i] = {}
+        cluster_cache_keys[node_i] = []
+
+def cluster_cache_get(cluster_cache, cluster_cache_keys, key):
+    node_i = hash(key) % CLUSTER_CACHE_LEN
+    
+    return cache_get(cluster_cache[node_i], cluster_cache_keys[node_i], key)
+
+def cluster_cache_put(cluster_cache, cluster_cache_keys, key, value):
+    node_i = hash(key) % CLUSTER_CACHE_LEN
+    
+    cache_put(cluster_cache[node_i], cluster_cache_keys[node_i], key, value)
+
 @asyncio.coroutine
 def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_addr_type = hook_args['remote_addr_type']
@@ -90,8 +109,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_port = hook_args['remote_port']
     
     loop = hook_environ['loop']
-    addrinfo_cache = hook_environ['addrinfo_cache']
-    addrinfo_cache_keys = hook_environ['addrinfo_cache_keys']
+    addrinfo_cluster_cache = hook_environ['addrinfo_cluster_cache']
+    addrinfo_cluster_cache_keys = hook_environ['addrinfo_cluster_cache_keys']
     assert loop is not None
     
     def addrinfo_request():
@@ -116,7 +135,11 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             error = type(e), str(e)
         return data, error
     
-    addr_list = cache_get(addrinfo_cache, addrinfo_cache_keys, remote_addr)
+    addr_list = cluster_cache_get(
+            addrinfo_cluster_cache,
+            addrinfo_cluster_cache_keys,
+            remote_addr,
+            )
     
     if addr_list is None:
         for try_i in range(3):
@@ -154,7 +177,12 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
         else:
             addr_list = ipv6_addr_list + ipv4_addr_list
         
-        cache_put(addrinfo_cache, addrinfo_cache_keys, remote_addr, addr_list)
+        cluster_cache_put(
+                addrinfo_cluster_cache,
+                addrinfo_cluster_cache_keys,
+                remote_addr,
+                addr_list,
+                )
     
     for addr in addr_list:
         try:
@@ -176,9 +204,14 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
 def socks_server_create_feature():
     hook_environ = {
             'loop': None,
-            'addrinfo_cache': {},
-            'addrinfo_cache_keys': [],
+            'addrinfo_cluster_cache': {},
+            'addrinfo_cluster_cache_keys': {},
             }
+    
+    cluster_cache_init(
+            hook_environ['addrinfo_cluster_cache'],
+            hook_environ['addrinfo_cluster_cache_keys'],
+            )
     
     return {
             'init_hook': functools.partial(init_hook, hook_environ),
