@@ -120,12 +120,10 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             opener = url_request.build_opener()
             res = opener.open(
                     url_request.Request(
-                            '{}?{}'.format(
-                                    ADDRINFO_SERVER_URL,
-                                    url_parse.urlencode({
-                                            'host': remote_addr,
-                                            }),
-                                    ),
+                            ADDRINFO_SERVER_URL,
+                            data=url_parse.urlencode({
+                                    'host': remote_addr,
+                                    }).encode()
                             ),
                     timeout=REQUEST_TIMEOUT,
                     )
@@ -133,6 +131,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             data = json.loads(data)
         except Exception as e:
             error = type(e), str(e)
+        
         return data, error
     
     addr_list = cluster_cache_get(
