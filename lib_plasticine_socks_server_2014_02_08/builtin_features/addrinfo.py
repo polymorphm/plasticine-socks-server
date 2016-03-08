@@ -1,6 +1,6 @@
 # -*- mode: python; coding: utf-8 -*-
 #
-# Copyright (c) 2014 Andrej Antonov <polymorphm@gmail.com>
+# Copyright (c) 2014, 2016 Andrej Antonov <polymorphm@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ import json
 import socket
 from .. import socks_server
 
-ADDRINFO_APPSPOT_URL = 'https://addrinfo.appspot.com/'
+ADDRINFO_SERVER_URL = 'https://httpdistortion-httpdistortion.rhcloud.com/api/addrinfo'
 REQUEST_TIMEOUT = 5.0
 REQUEST_LIMIT = 1000000
 CACHE_LEN = 1000
@@ -121,7 +121,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
             res = opener.open(
                     url_request.Request(
                             '{}?{}'.format(
-                                    ADDRINFO_APPSPOT_URL,
+                                    ADDRINFO_SERVER_URL,
                                     url_parse.urlencode({
                                             'host': remote_addr,
                                             }),

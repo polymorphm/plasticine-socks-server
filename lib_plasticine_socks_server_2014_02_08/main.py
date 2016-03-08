@@ -40,7 +40,7 @@ BUILTIN_FEATURE_NAMESPACE = '{}.builtin_features'.format(
         __name__.rsplit('.', maxsplit=1)[0]
         )
 BUILTIN_FEATURE_NAME_LIST = (
-        'addrinfo_appspot',
+        'addrinfo',
         'http_distortion',
         'multi_channel_perm',
         )
