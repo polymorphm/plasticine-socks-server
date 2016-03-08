@@ -125,6 +125,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                 break
         
         if error or not isinstance(data, (tuple, list)):
+            # will be used default behavior
+            
             return
         
         ipv6_addr_list = []
@@ -166,6 +168,8 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
                 socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
         return remote_reader, remote_writer
+    
+    # open connection will be fail
     
     return False
 
