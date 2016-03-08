@@ -33,6 +33,10 @@ import socket
 from .. import socks_server
 
 ADDRINFO_SERVER_URL = 'https://httpdistortion-httpdistortion.rhcloud.com/api/addrinfo'
+ADDRINFO_EXCLUDE_HOST_LIST = (
+        'www.httpdistortion.org',
+        'httpdistortion-httpdistortion.rhcloud.com',
+        )
 REQUEST_TIMEOUT = 5.0
 REQUEST_LIMIT = 1000000
 CACHE_LEN = 1000
@@ -108,6 +112,9 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_addr = hook_args['remote_addr']
     remote_port = hook_args['remote_port']
     
+    if remote_addr in ADDRINFO_EXCLUDE_HOST_LIST:
+        return
+    
     loop = hook_environ['loop']
     addrinfo_cluster_cache = hook_environ['addrinfo_cluster_cache']
     addrinfo_cluster_cache_keys = hook_environ['addrinfo_cluster_cache_keys']
@@ -116,6 +123,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     def addrinfo_request():
         data = None
         error = None
+        
         try:
             opener = url_request.build_opener()
             res = opener.open(
