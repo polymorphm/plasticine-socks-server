@@ -184,3 +184,12 @@ def main():
             )
     
     loop.run_until_complete(serve_future)
+    
+    try:
+        loop.remove_signal_handler(signal.SIGINT)
+    except NotImplementedError:
+        pass
+    try:
+        loop.remove_signal_handler(signal.SIGTERM)
+    except NotImplementedError:
+        pass
