@@ -43,8 +43,7 @@ CACHE_LEN = 1000
 CACHE_EXPIRE = datetime.timedelta(hours=10)
 CLUSTER_CACHE_LEN = 100
 
-@asyncio.coroutine
-def init_hook(hook_environ, socks_server_environ, hook_args):
+async def init_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_args['loop']
     hook_environ['loop'] = loop
     assert loop is not None
@@ -106,8 +105,7 @@ def cluster_cache_put(cluster_cache, cluster_cache_keys, key, value):
     
     cache_put(cluster_cache[node_i], cluster_cache_keys[node_i], key, value)
 
-@asyncio.coroutine
-def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
+async def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     remote_addr_type = hook_args['remote_addr_type']
     remote_addr = hook_args['remote_addr']
     remote_port = hook_args['remote_port']
@@ -150,7 +148,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     
     if addr_list is None:
         for try_i in range(3):
-            data, error = yield from loop.run_in_executor(None, addrinfo_request)
+            data, error = await loop.run_in_executor(None, addrinfo_request)
             if not error:
                 break
         
@@ -193,7 +191,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     
     for addr in addr_list:
         try:
-            remote_reader, remote_writer = yield from asyncio.open_connection(
+            remote_reader, remote_writer = await asyncio.open_connection(
                     host=addr, port=remote_port,
                     limit=socks_server.READER_LIMIT, loop=loop)
         except OSError:
