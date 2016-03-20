@@ -1,6 +1,6 @@
 # -*- mode: python; coding: utf-8 -*-
 #
-# Copyright (c) 2014 Andrej Antonov <polymorphm@gmail.com>
+# Copyright (c) 2014, 2016 Andrej Antonov <polymorphm@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,8 +29,7 @@ import weakref
 
 ACC_BUF_LEN = 10000
 
-@asyncio.coroutine
-def init_hook(hook_environ, socks_server_environ, hook_args):
+async def init_hook(hook_environ, socks_server_environ, hook_args):
     loop = hook_args['loop']
     hook_environ['loop'] = loop
     assert loop is not None
@@ -69,8 +68,7 @@ def acc_buf_distortion(acc_buf):
     
     return modified_acc_buf
 
-@asyncio.coroutine
-def client_read_hook(hook_environ, socks_server_environ, hook_args):
+async def client_read_hook(hook_environ, socks_server_environ, hook_args):
     client_writer = hook_args['client_writer']
     remote_writer = hook_args['remote_writer']
     buf = hook_args['buf']
