@@ -113,8 +113,7 @@ def socks_server_after_fork(socks_server_environ):
         if after_fork_hook is not None:
             after_fork_hook(socks_server_environ, {})
 
-@asyncio.coroutine
-def socks_server_shutdown(socks_server_environ, loop):
+async def socks_server_shutdown(socks_server_environ, loop):
     # XXX shutdown may be executed before of execution init (or init completed)
     
     if socks_server_environ['loop'] is not None:
@@ -130,44 +129,41 @@ def socks_server_shutdown(socks_server_environ, loop):
     for feature in features:
         shutdown_hook = feature.get('shutdown_hook')
         if shutdown_hook is not None:
-            yield from shutdown_hook(socks_server_environ, {'loop': loop})
+            await shutdown_hook(socks_server_environ, {'loop': loop})
     
     socks_server_environ['shutdown_event'].set()
 
-@asyncio.coroutine
-def socks_server_init(socks_server_environ, loop):
+async def socks_server_init(socks_server_environ, loop):
     features = socks_server_environ['features']
     socks_server_environ['loop'] = loop
     
     for feature in features:
         init_hook = feature.get('init_hook')
         if init_hook is not None:
-            yield from init_hook(socks_server_environ, {'loop': loop})
+            await init_hook(socks_server_environ, {'loop': loop})
 
-@asyncio.coroutine
-def socks_server_client_close(socks_server_environ, client_reader, client_writer):
+async def socks_server_client_close(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     
     try:
         for feature in features:
             close_hook = feature.get('close_hook')
             if close_hook is not None:
-                close_hook_result = yield from close_hook(socks_server_environ, {
+                close_hook_result = await close_hook(socks_server_environ, {
                         'client_reader': client_reader,
                         'client_writer': client_writer,
                         })
     finally:
         client_writer.close()
 
-@asyncio.coroutine
-def socks_server_client_auth(socks_server_environ, client_reader, client_writer):
+async def socks_server_client_auth(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     
     for feature in features:
         auth_handle_hook = feature.get('auth_handle_hook')
         if auth_handle_hook is not None:
-            auth_handle_hook_result = yield from auth_handle_hook(socks_server_environ, {
+            auth_handle_hook_result = await auth_handle_hook(socks_server_environ, {
                     'client_reader': client_reader,
                     'client_writer': client_writer,
                     })
@@ -178,7 +174,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
                 return auth_handle_hook_result
     
     try:
-        recv_data = yield from client_reader.readexactly(1)
+        recv_data = await client_reader.readexactly(1)
     except (EOFError, OSError):
         return False
     
@@ -190,7 +186,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
         return False
     
     try:
-        recv_data = yield from client_reader.readexactly(1)
+        recv_data = await client_reader.readexactly(1)
     except (EOFError, OSError):
         return False
     
@@ -207,7 +203,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
     
     for i in range(auth_count):
         try:
-            recv_data = yield from client_reader.readexactly(1)
+            recv_data = await client_reader.readexactly(1)
         except (EOFError, OSError):
             return False
         
@@ -232,8 +228,7 @@ def socks_server_client_auth(socks_server_environ, client_reader, client_writer)
     
     return True
 
-@asyncio.coroutine
-def socks_server_remote_connection(
+async def socks_server_remote_connection(
         socks_server_environ, client_reader, client_writer,
         remote_addr_type, remote_addr, remote_port):
     features = socks_server_environ['features']
@@ -242,7 +237,7 @@ def socks_server_remote_connection(
     for feature in features:
         remote_connection_hook = feature.get('remote_connection_hook')
         if remote_connection_hook is not None:
-            remote_connection_hook_result = yield from remote_connection_hook(
+            remote_connection_hook_result = await remote_connection_hook(
                     socks_server_environ, {
                             'client_reader': client_reader,
                             'client_writer': client_writer,
@@ -265,7 +260,7 @@ def socks_server_remote_connection(
                 break
     else:
         try:
-            remote_reader, remote_writer = yield from asyncio.open_connection(
+            remote_reader, remote_writer = await asyncio.open_connection(
                     host=remote_addr, port=remote_port, limit=READER_LIMIT, loop=loop)
         except OSError:
             return
@@ -275,25 +270,21 @@ def socks_server_remote_connection(
     
     return remote_reader, remote_writer
 
-@asyncio.coroutine
-def socks_server_client_handle(socks_server_environ, client_reader, client_writer):
+async def socks_server_client_handle(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     shutdown_event = socks_server_environ['shutdown_event']
     
-    @asyncio.coroutine
-    def shutdown_coro():
-        yield from shutdown_event.wait()
+    async def shutdown_coro():
+        await shutdown_event.wait()
         client_handle_future.cancel()
     
-    @asyncio.coroutine
-    def request_timeout_coro():
-        yield from asyncio.sleep(REQUEST_TIMEOUT, loop=loop)
+    async def request_timeout_coro():
+        await asyncio.sleep(REQUEST_TIMEOUT, loop=loop)
         client_handle_future.cancel()
     
-    @asyncio.coroutine
-    def client_handle_coro():
-        is_allowed = yield from socks_server_client_auth(
+    async def client_handle_coro():
+        is_allowed = await socks_server_client_auth(
                 socks_server_environ, client_reader, client_writer)
         
         assert isinstance(is_allowed, bool)
@@ -302,7 +293,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             return
         
         try:
-            recv_data = yield from client_reader.readexactly(1)
+            recv_data = await client_reader.readexactly(1)
         except (EOFError, OSError):
             return
         
@@ -314,7 +305,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             return
         
         try:
-            recv_data = yield from client_reader.readexactly(1)
+            recv_data = await client_reader.readexactly(1)
         except (EOFError, OSError):
             return
         
@@ -326,7 +317,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             return
         
         try:
-            recv_data = yield from client_reader.readexactly(2)
+            recv_data = await client_reader.readexactly(2)
         except (EOFError, OSError):
             return
         
@@ -337,7 +328,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
         if remote_addr_type_code == 0x01:
             remote_addr_type = 'ipv4'
             try:
-                remote_addr_bytes = yield from client_reader.readexactly(4)
+                remote_addr_bytes = await client_reader.readexactly(4)
             except (EOFError, OSError):
                 return
             
@@ -346,14 +337,14 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             remote_addr_type = 'domain'
             
             try:
-                recv_data = yield from client_reader.readexactly(1)
+                recv_data = await client_reader.readexactly(1)
             except (EOFError, OSError):
                 return
             
             remote_addr_len = struct.unpack('!B', recv_data)[0]
             
             try:
-                remote_addr_bytes = yield from client_reader.readexactly(remote_addr_len)
+                remote_addr_bytes = await client_reader.readexactly(remote_addr_len)
             except (EOFError, OSError):
                 return
             
@@ -361,7 +352,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
         elif remote_addr_type_code == 0x04:
             remote_addr_type = 'ipv6'
             try:
-                remote_addr_bytes = yield from client_reader.readexactly(16)
+                remote_addr_bytes = await client_reader.readexactly(16)
             except (EOFError, OSError):
                 return
             
@@ -372,7 +363,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             return
         
         try:
-            recv_data = yield from client_reader.readexactly(2)
+            recv_data = await client_reader.readexactly(2)
         except (EOFError, OSError):
             return
         
@@ -381,7 +372,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
         for feature in features:
             before_remote_connection_hook = feature.get('before_remote_connection_hook')
             if before_remote_connection_hook is not None:
-                before_remote_connection_hook_result = yield from before_remote_connection_hook(
+                before_remote_connection_hook_result = await before_remote_connection_hook(
                         socks_server_environ, {
                                 'client_reader': client_reader,
                                 'client_writer': client_writer,
@@ -408,7 +399,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     ))
             return
         
-        remote_connection_result = yield from socks_server_remote_connection(
+        remote_connection_result = await socks_server_remote_connection(
                 socks_server_environ, client_reader, client_writer,
                 remote_addr_type, remote_addr, remote_port)
         
@@ -426,7 +417,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             for feature in features:
                 after_remote_connection_hook = feature.get('after_remote_connection_hook')
                 if after_remote_connection_hook is not None:
-                    after_remote_connection_hook_result = yield from after_remote_connection_hook(
+                    after_remote_connection_hook_result = await after_remote_connection_hook(
                             socks_server_environ, {
                                     'client_reader': client_reader,
                                     'client_writer': client_writer,
@@ -466,17 +457,17 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             
             request_timeout_future.cancel()
             
-            def client_read_coro():
+            async def client_read_coro():
                 while True:
                     try:
-                        buf = yield from client_reader.read(READER_BUF)
+                        buf = await client_reader.read(READER_BUF)
                     except OSError:
                         buf = b''
                     
                     for feature in features:
                         client_read_hook = feature.get('client_read_hook')
                         if client_read_hook is not None:
-                            client_read_hook_result = yield from client_read_hook(socks_server_environ, {
+                            client_read_hook_result = await client_read_hook(socks_server_environ, {
                                     'client_reader': client_reader,
                                     'client_writer': client_writer,
                                     'remote_reader': remote_reader,
@@ -502,21 +493,21 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     remote_writer.write(buf)
                     
                     try:
-                        yield from remote_writer.drain()
+                        await remote_writer.drain()
                     except OSError:
                         return
             
-            def remote_read_coro():
+            async def remote_read_coro():
                 while True:
                     try:
-                        buf = yield from remote_reader.read(READER_BUF)
+                        buf = await remote_reader.read(READER_BUF)
                     except OSError:
                         buf = b''
                     
                     for feature in features:
                         remote_read_hook = feature.get('remote_read_hook')
                         if remote_read_hook is not None:
-                            remote_read_hook_result = yield from remote_read_hook(socks_server_environ, {
+                            remote_read_hook_result = await remote_read_hook(socks_server_environ, {
                                     'client_reader': client_reader,
                                     'client_writer': client_writer,
                                     'remote_reader': remote_reader,
@@ -542,7 +533,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     client_writer.write(buf)
                     
                     try:
-                        yield from client_writer.drain()
+                        await client_writer.drain()
                     except OSError:
                         return
             
@@ -550,7 +541,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                     asyncio.ensure_future(client_read_coro(), loop=loop), \
                     asyncio.ensure_future(remote_read_coro(), loop=loop)
             try:
-                yield from asyncio.wait(
+                await asyncio.wait(
                         (client_read_future, remote_read_future),
                         return_when=asyncio.FIRST_COMPLETED,
                         loop=loop,
@@ -573,7 +564,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             asyncio.ensure_future(request_timeout_coro(), loop=loop), \
             asyncio.ensure_future(client_handle_coro(), loop=loop)
     try:
-        yield from asyncio.wait((client_handle_future,), loop=loop)
+        await asyncio.wait((client_handle_future,), loop=loop)
         
         if not client_handle_future.cancelled():
             # if not cancelled -- re-raise error
@@ -583,8 +574,7 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
         request_timeout_future.cancel()
         shutdown_future.cancel()
 
-@asyncio.coroutine
-def socks_server_accept(socks_server_environ, client_reader, client_writer):
+async def socks_server_accept(socks_server_environ, client_reader, client_writer):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     is_allowed = True
@@ -593,7 +583,7 @@ def socks_server_accept(socks_server_environ, client_reader, client_writer):
         for feature in features:
             accept_hook = feature.get('accept_hook')
             if accept_hook is not None:
-                accept_hook_result = yield from accept_hook(socks_server_environ, {
+                accept_hook_result = await accept_hook(socks_server_environ, {
                         'client_reader': client_reader,
                         'client_writer': client_writer,
                         })
@@ -611,25 +601,26 @@ def socks_server_accept(socks_server_environ, client_reader, client_writer):
         if not is_allowed:
             return
         
-        yield from socks_server_client_handle(socks_server_environ, client_reader, client_writer)
+        await socks_server_client_handle(socks_server_environ, client_reader, client_writer)
     finally:
-        yield from socks_server_client_close(socks_server_environ, client_reader, client_writer)
+        await socks_server_client_close(socks_server_environ, client_reader, client_writer)
 
-@asyncio.coroutine
-def socks_server_serve(socks_server_environ):
+async def socks_server_serve(socks_server_environ):
     features = socks_server_environ['features']
     loop = socks_server_environ['loop']
     shutdown_event = socks_server_environ['shutdown_event']
     socks_sock_list = socks_server_environ['socks_sock_list']
     
+    server_list = []
+    client_handle_future_list = []
+    
     for feature in features:
         serve_init_hook = feature.get('serve_init_hook')
         if serve_init_hook is not None:
-            yield from serve_init_hook(socks_server_environ, {})
+            await serve_init_hook(socks_server_environ, {})
     
-    @asyncio.coroutine
-    def shutdown_coro():
-        yield from shutdown_event.wait()
+    async def shutdown_coro():
+        await shutdown_event.wait()
         for server in server_list:
             server.close()
     
@@ -649,21 +640,19 @@ def socks_server_serve(socks_server_environ):
                 if not client_handle_future.done()
                 )
     
-    client_handle_future_list = []
     try:
-        server_list = tuple(
-                (yield from asyncio.start_server(
-                        client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop))
-                for socks_sock in socks_sock_list
-                )
+        for socks_sock in socks_sock_list:
+            server_list.append(await asyncio.start_server(
+                    client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop
+                    ))
         shutdown_future = asyncio.ensure_future(shutdown_coro(), loop=loop)
         try:
             for server in server_list:
-                yield from asyncio.wait((server.wait_closed(),), loop=loop)
+                await asyncio.wait((server.wait_closed(),), loop=loop)
             
             if shutdown_event.is_set():
                 if client_handle_future_list:
-                    yield from asyncio.wait(client_handle_future_list, loop=loop)
+                    await asyncio.wait(client_handle_future_list, loop=loop)
                     
                     for client_handle_future in client_handle_future_list:
                         if not client_handle_future.cancelled():
