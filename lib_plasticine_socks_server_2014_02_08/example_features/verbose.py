@@ -5,7 +5,6 @@
 assert str is not bytes
 
 import functools
-import asyncio
 from .. import socks_server
 
 def try_print(*args, **kwargs):
@@ -66,8 +65,7 @@ def after_fork_hook(hook_environ, socks_server_environ, hook_args):
     
     # returns nothing
 
-@asyncio.coroutine
-def shutdown_hook(hook_environ, socks_server_environ, hook_args):
+async def shutdown_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 1
     loop = hook_args['loop']
     
@@ -80,8 +78,7 @@ def shutdown_hook(hook_environ, socks_server_environ, hook_args):
     
     # returns nothing
 
-@asyncio.coroutine
-def init_hook(hook_environ, socks_server_environ, hook_args):
+async def init_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 1
     loop = hook_args['loop']
     
@@ -91,8 +88,7 @@ def init_hook(hook_environ, socks_server_environ, hook_args):
     
     # returns nothing
 
-@asyncio.coroutine
-def serve_init_hook(hook_environ, socks_server_environ, hook_args):
+async def serve_init_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 0
     
     loop = hook_environ['loop']
@@ -102,8 +98,7 @@ def serve_init_hook(hook_environ, socks_server_environ, hook_args):
     
     # returns nothing
 
-@asyncio.coroutine
-def close_hook(hook_environ, socks_server_environ, hook_args):
+async def close_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 2
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -117,8 +112,7 @@ def close_hook(hook_environ, socks_server_environ, hook_args):
     
     # returns nothing
 
-@asyncio.coroutine
-def accept_hook(hook_environ, socks_server_environ, hook_args):
+async def accept_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 2
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -133,8 +127,7 @@ def accept_hook(hook_environ, socks_server_environ, hook_args):
     # may return ``True`` or ``False`` -- for allow or disallow client accepting.
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def auth_handle_hook(hook_environ, socks_server_environ, hook_args):
+async def auth_handle_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 2
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -150,8 +143,7 @@ def auth_handle_hook(hook_environ, socks_server_environ, hook_args):
     #       if auth was performed (with using ``client_reader`` and ``client_writer``).
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def before_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
+async def before_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 5
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -172,8 +164,7 @@ def before_remote_connection_hook(hook_environ, socks_server_environ, hook_args)
     # may return ``True`` or ``False`` -- for allow or disallow connection.
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
+async def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 5
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -194,8 +185,7 @@ def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     # may return ``tuple(remote_reader, remote_writer)`` or ``False``.
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def after_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
+async def after_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 7
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -216,8 +206,7 @@ def after_remote_connection_hook(hook_environ, socks_server_environ, hook_args):
     # may return ``True`` or ``False`` -- for allow or disallow connection.
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def client_read_hook(hook_environ, socks_server_environ, hook_args):
+async def client_read_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 5
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
@@ -243,8 +232,7 @@ def client_read_hook(hook_environ, socks_server_environ, hook_args):
     # may return modified ``buf`` or may return ``socks_server.READ_IDLE_BUF``.
     # returns nothing to ignore this hook.
 
-@asyncio.coroutine
-def remote_read_hook(hook_environ, socks_server_environ, hook_args):
+async def remote_read_hook(hook_environ, socks_server_environ, hook_args):
     assert len(hook_args) == 5
     client_reader = hook_args['client_reader']
     client_writer = hook_args['client_writer']
