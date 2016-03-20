@@ -157,7 +157,7 @@ def main():
     
     def shutdown_handler():
         # XXX shutdown may be executed before of execution init (or init completed)
-        asyncio.async(
+        asyncio.ensure_future(
                 socks_server.socks_server_shutdown(socks_server_environ, loop),
                 loop=loop,
                 )
@@ -170,14 +170,14 @@ def main():
     except NotImplementedError:
         pass
     
-    init_future = asyncio.async(
+    init_future = asyncio.ensure_future(
             socks_server.socks_server_init(socks_server_environ, loop),
             loop=loop,
             )
     
     loop.run_until_complete(init_future)
     
-    serve_future = asyncio.async(
+    serve_future = asyncio.ensure_future(
             socks_server.socks_server_serve(socks_server_environ),
             loop=loop,
             )

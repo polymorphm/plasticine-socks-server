@@ -1,6 +1,6 @@
 # -*- mode: python; coding: utf-8 -*-
 #
-# Copyright (c) 2014, 2015 Andrej Antonov <polymorphm@gmail.com>
+# Copyright (c) 2014, 2015, 2016 Andrej Antonov <polymorphm@gmail.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -547,8 +547,8 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
                         return
             
             client_read_future, remote_read_future = \
-                    asyncio.async(client_read_coro(), loop=loop), \
-                    asyncio.async(remote_read_coro(), loop=loop)
+                    asyncio.ensure_future(client_read_coro(), loop=loop), \
+                    asyncio.ensure_future(remote_read_coro(), loop=loop)
             try:
                 yield from asyncio.wait(
                         (client_read_future, remote_read_future),
@@ -569,9 +569,9 @@ def socks_server_client_handle(socks_server_environ, client_reader, client_write
             remote_writer.close()
     
     shutdown_future, request_timeout_future, client_handle_future = \
-            asyncio.async(shutdown_coro(), loop=loop), \
-            asyncio.async(request_timeout_coro(), loop=loop), \
-            asyncio.async(client_handle_coro(), loop=loop)
+            asyncio.ensure_future(shutdown_coro(), loop=loop), \
+            asyncio.ensure_future(request_timeout_coro(), loop=loop), \
+            asyncio.ensure_future(client_handle_coro(), loop=loop)
     try:
         yield from asyncio.wait((client_handle_future,), loop=loop)
         
@@ -637,7 +637,7 @@ def socks_server_serve(socks_server_environ):
         client_writer.get_extra_info('socket').setsockopt(
                 socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         
-        accept_future = asyncio.async(
+        accept_future = asyncio.ensure_future(
                 socks_server_accept(socks_server_environ, client_reader, client_writer),
                 loop=loop,
                 )
@@ -656,7 +656,7 @@ def socks_server_serve(socks_server_environ):
                         client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop))
                 for socks_sock in socks_sock_list
                 )
-        shutdown_future = asyncio.async(shutdown_coro(), loop=loop)
+        shutdown_future = asyncio.ensure_future(shutdown_coro(), loop=loop)
         try:
             for server in server_list:
                 yield from asyncio.wait((server.wait_closed(),), loop=loop)
