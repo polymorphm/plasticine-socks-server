@@ -544,7 +544,6 @@ async def socks_server_client_handle(socks_server_environ, client_reader, client
                 await asyncio.wait(
                         (client_read_future, remote_read_future),
                         return_when=asyncio.FIRST_COMPLETED,
-                        loop=loop,
                         )
                 
                 if client_read_future.done() and not client_read_future.cancelled():
@@ -564,7 +563,7 @@ async def socks_server_client_handle(socks_server_environ, client_reader, client
             asyncio.ensure_future(request_timeout_coro(), loop=loop), \
             asyncio.ensure_future(client_handle_coro(), loop=loop)
     try:
-        await asyncio.wait((client_handle_future,), loop=loop)
+        await asyncio.wait((client_handle_future,))
         
         if not client_handle_future.cancelled():
             # if not cancelled -- re-raise error
@@ -648,11 +647,11 @@ async def socks_server_serve(socks_server_environ):
         shutdown_future = asyncio.ensure_future(shutdown_coro(), loop=loop)
         try:
             for server in server_list:
-                await asyncio.wait((server.wait_closed(),), loop=loop)
+                await asyncio.wait((server.wait_closed(),))
             
             if shutdown_event.is_set():
                 if client_handle_future_list:
-                    await asyncio.wait(client_handle_future_list, loop=loop)
+                    await asyncio.wait(client_handle_future_list)
                     
                     for client_handle_future in client_handle_future_list:
                         if not client_handle_future.cancelled():
