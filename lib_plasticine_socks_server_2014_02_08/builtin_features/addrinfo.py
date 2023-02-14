@@ -193,7 +193,7 @@ async def remote_connection_hook(hook_environ, socks_server_environ, hook_args):
         try:
             remote_reader, remote_writer = await asyncio.open_connection(
                     host=addr, port=remote_port,
-                    limit=socks_server.READER_LIMIT, loop=loop)
+                    limit=socks_server.READER_LIMIT)
         except OSError:
             continue
         
