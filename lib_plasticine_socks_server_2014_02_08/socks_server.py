@@ -643,7 +643,7 @@ async def socks_server_serve(socks_server_environ):
     try:
         for socks_sock in socks_sock_list:
             server_list.append(await asyncio.start_server(
-                    client_connected_cb, sock=socks_sock, limit=READER_LIMIT, loop=loop
+                    client_connected_cb, sock=socks_sock, limit=READER_LIMIT
                     ))
         shutdown_future = asyncio.ensure_future(shutdown_coro(), loop=loop)
         try:
